@@ -5,7 +5,9 @@ name: guardiano
 services:
   db:
     container_name: guardiano-db
-    image: postgres:16-alpine
+    build:
+      context: ./database
+    image: ${POSTGRES_IMAGE:-${REGISTRY:-guardiano}/db:${TAG:-latest}}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-guardiano}
       POSTGRES_USER: ${POSTGRES_USER:-guardiano}

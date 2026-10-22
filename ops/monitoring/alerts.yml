@@ -1,0 +1,57 @@
+groups:
+  - name: guardiano
+    rules:
+      - alert: GuardianoScrapeUnavailable
+        expr: up{job="guardiano"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Guardiano API or metrics authentication is unavailable
+      - alert: GuardianoDeadJobs
+        expr: guardiano_jobs{status="dead"} > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: Guardiano background jobs exhausted retries
+      - alert: GuardianoQueueLag
+        expr: guardiano_job_oldest_queued_seconds > 300
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: Guardiano job queue is delayed
+      - alert: GuardianoHostDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"} < 0.15
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: Guardiano host root filesystem has less than 15 percent free space
+      - alert: GuardianoBackupStale
+        expr: time() - guardiano_backup_last_success_unixtime > 90000
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: No successful off-host Guardiano backup in the last 25 hours
+      - alert: GuardianoBackupTelemetryMissing
+        expr: absent(guardiano_backup_last_success_unixtime)
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: Guardiano backup telemetry is missing
+      - alert: GuardianoContainerUnhealthy
+        expr: guardiano_container_healthy == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: A Guardiano container is missing or unhealthy
+      - alert: GuardianoHealthProbeStale
+        expr: time() - node_textfile_mtime_seconds{file=~".*guardiano-health.prom"} > 180
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Guardiano container health collector stopped updating
+      - alert: GuardianoHealthTelemetryMissing
+        expr: absent(guardiano_container_healthy)
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: Guardiano container health telemetry is missing

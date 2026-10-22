@@ -1,0 +1,7 @@
+# Run Caddy on the same host as Compose. Set GUARDIANO_DOMAIN in its service environment.
+{$GUARDIANO_DOMAIN} {
+    encode zstd gzip
+    header Strict-Transport-Security "max-age=31536000"
+    reverse_proxy 127.0.0.1:8080
+    log
+}

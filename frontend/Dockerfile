@@ -15,7 +15,7 @@ FROM deps AS build
 COPY . .
 RUN pnpm build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
 ENV BACKEND_URL=http://backend:8000 \
     MAX_UPLOAD_MB=50 \
     REAL_IP_FROM=127.0.0.1/32 \

@@ -52,9 +52,52 @@ jobs:
     needs: validate
     uses: ./.github/workflows/ci.yml
 
+  images:
+    name: Publish verified images by digest
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: production-images
+          path: ${{ runner.temp }}
+      - name: Publish the exact images exercised by CI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -dc "$RUNNER_TEMP/production-images.tar.gz" | docker load
+          : > release-images.env
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          repository="$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          for service in backend frontend db; do
+            image="ghcr.io/$repository/$service:$RELEASE_TAG"
+            docker tag "guardiano/$service:latest" "$image"
+            docker push "$image"
+            digest="$(docker image inspect "$image" --format '{{json .RepoDigests}}' | python3 -c 'import json,sys; prefix=sys.argv[1]+"@sha256:"; print(next(x for x in json.load(sys.stdin) if x.startswith(prefix)))' "${image%:*}")"
+            test -n "$digest"
+            variable="$(printf '%s' "$service" | tr '[:lower:]' '[:upper:]')"
+            if [ "$service" = db ]; then variable=POSTGRES; fi
+            printf '%s_IMAGE=%s\n' "$variable" "$digest" >> release-images.env
+          done
+          docker logout ghcr.io
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-image-digests
+          path: release-images.env
+          retention-days: 90
+
   release:
     name: Publish GitHub release
-    needs: checks
+    needs: images
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -65,6 +108,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-image-digests
       - name: Extract release notes from changelog
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -94,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists."
+            gh release upload "$RELEASE_TAG" release-images.env --clobber
           else
-            gh release create "$RELEASE_TAG" --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "Guardiano $RELEASE_TAG"
+            gh release create "$RELEASE_TAG" release-images.env --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "Guardiano $RELEASE_TAG"
           fi

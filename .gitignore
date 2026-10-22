@@ -76,3 +76,9 @@ claude-settings.json
 .windsurf/
 .cline/
 CLAUDE.md
+
+# Local operational verification artifacts
+/image-audit/
+*.dump.enc
+*.dump.enc.json
+*.dump.enc.partial

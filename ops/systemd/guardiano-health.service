@@ -1,0 +1,10 @@
+[Unit]
+Description=Export Guardiano container health
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/guardiano
+EnvironmentFile=/etc/guardiano/backup.env
+ExecStart=/usr/bin/python3 /opt/guardiano/scripts/health-metrics.py --env-file ${ENV_FILE} --textfile-dir ${TEXTFILE_DIR}
+UMask=0022

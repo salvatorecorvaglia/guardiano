@@ -1,22 +1,45 @@
-# Compose 2.24.4+: docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+# Compose 2.24.4+: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml up -d
 # Terminate HTTPS at a reverse proxy on this host; forward to 127.0.0.1:${HTTP_PORT:-8080}.
 services:
   db:
     ports: !reset []
     restart: unless-stopped
+    logging: &bounded-logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
   backend:
+    env_file: !override
+      - path: ${GUARDIANO_ENV_FILE:-.env.production}
+        required: true
     environment:
       ENV: production
       SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY of at least 32 characters}
       PUBLIC_URL: ${PUBLIC_URL:?Set the public HTTPS URL}
+      INTEGRATIONS_KEY: ${INTEGRATIONS_KEY:?Set an independent persistent encryption key}
+      GUARDIANO_ADMIN_PASSWORD: ${GUARDIANO_ADMIN_PASSWORD:?Set a unique administrator password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique database password}
     restart: unless-stopped
+    logging: *bounded-logs
+    init: true
   worker:
+    env_file: !override
+      - path: ${GUARDIANO_ENV_FILE:-.env.production}
+        required: true
     environment:
       ENV: production
       SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY of at least 32 characters}
       PUBLIC_URL: ${PUBLIC_URL:?Set the public HTTPS URL}
+      INTEGRATIONS_KEY: ${INTEGRATIONS_KEY:?Set an independent persistent encryption key}
+      GUARDIANO_ADMIN_PASSWORD: ${GUARDIANO_ADMIN_PASSWORD:?Set a unique administrator password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique database password}
     restart: unless-stopped
+    logging: *bounded-logs
+    init: true
   frontend:
     ports: !override
       - "127.0.0.1:${HTTP_PORT:-8080}:8080"
     restart: unless-stopped
+    logging: *bounded-logs
+    init: true

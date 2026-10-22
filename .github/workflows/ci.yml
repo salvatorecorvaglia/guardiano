@@ -53,6 +53,9 @@ jobs:
         run: python -m pip install uv==0.11.19
       - name: Check dependency and API contracts
         run: python check_contracts.py
+      - name: Audit locked production dependencies
+        run: |
+          uv tool run pip-audit==2.10.1 --disable-pip --no-deps -r requirements.lock
       - name: Lint
         run: ruff check .
       - name: Check OpenAPI contract
@@ -106,6 +109,8 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -149,7 +154,53 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Operational safety tests
+        run: python3 -m unittest discover -s scripts/tests -v
       - name: Validate Compose configuration
         run: docker compose config --quiet
       - name: Build production images
-        run: docker compose build backend frontend
+        run: docker compose build db backend frontend
+
+      - name: Audit production container images
+        run: python3 scripts/image-audit.py --image guardiano/backend:latest --image guardiano/frontend:latest --image guardiano/db:latest --output-dir image-audit
+      - name: Retain full container vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: container-vulnerability-reports
+          path: image-audit/
+          retention-days: 30
+      - name: Exercise production startup, MFA, ingestion and encrypted restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/production.py --env-file .env.production init-env
+          cat >> .env.production <<'ENV'
+          PUBLIC_URL=https://guardiano.example.test
+          INTEL_SYNC_ENABLED=false
+          HTTP_PORT=18080
+          ENV
+          python3 scripts/production.py --env-file .env.production preflight --allow-local-build
+          docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml up -d --no-build --wait --wait-timeout 180
+          python3 scripts/staging-smoke.py --env-file .env.production --url http://127.0.0.1:18080 --disposable-staging
+          umask 077
+          openssl rand -hex 32 > "$RUNNER_TEMP/backup.key"
+          python3 scripts/production.py --env-file .env.production backup "$RUNNER_TEMP/guardiano.dump.enc" --key-file "$RUNNER_TEMP/backup.key"
+          python3 scripts/production.py --env-file .env.production restore-drill "$RUNNER_TEMP/guardiano.dump.enc" --key-file "$RUNNER_TEMP/backup.key" --application-check
+      - name: Save verified release images
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          docker save guardiano/backend:latest guardiano/frontend:latest guardiano/db:latest | gzip > "$RUNNER_TEMP/production-images.tar.gz"
+      - name: Retain verified release images
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: production-images
+          path: ${{ runner.temp }}/production-images.tar.gz
+          retention-days: 7
+      - name: Production stack diagnostics
+        if: failure()
+        run: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml logs --tail 100
+      - name: Clean up disposable production stack
+        if: always()
+        run: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml down -v

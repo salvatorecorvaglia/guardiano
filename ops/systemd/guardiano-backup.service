@@ -1,0 +1,12 @@
+[Unit]
+Description=Encrypted Guardiano backup and off-host upload
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/guardiano
+EnvironmentFile=/etc/guardiano/backup.env
+ExecStart=/bin/sh /opt/guardiano/scripts/backup.sh
+UMask=0077
