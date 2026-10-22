@@ -57,24 +57,24 @@ describe("Modal", () => {
   });
 });
 
-describe("Tabs", () => {
-  function Harness() {
-    const [active, setActive] = useState<"a" | "b" | "c">("a");
-    const tabs = [
-      { key: "a", label: "Alpha" },
-      { key: "b", label: "Beta" },
-      { key: "c", label: "Gamma" },
-    ] as const;
-    return (
-      <>
-        <Tabs id="t" label="Letters" tabs={tabs} active={active} onChange={setActive} />
-        <div {...tabPanel("t", active)}>panel {active}</div>
-      </>
-    );
-  }
+function TabsHarness() {
+  const [active, setActive] = useState<"a" | "b" | "c">("a");
+  const tabs = [
+    { key: "a", label: "Alpha" },
+    { key: "b", label: "Beta" },
+    { key: "c", label: "Gamma" },
+  ] as const;
+  return (
+    <>
+      <Tabs id="t" label="Letters" tabs={tabs} active={active} onChange={setActive} />
+      <div {...tabPanel("t", active)}>panel {active}</div>
+    </>
+  );
+}
 
+describe("Tabs", () => {
   it("is one stop in the tab order, tied to its panel", () => {
-    render(<Harness />);
+    render(<TabsHarness />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1]);
     expect(tabs[0].getAttribute("aria-controls")).toBe(screen.getByRole("tabpanel").id);
@@ -82,7 +82,7 @@ describe("Tabs", () => {
   });
 
   it("moves with the arrow keys, wrapping, and Home/End", async () => {
-    render(<Harness />);
+    render(<TabsHarness />);
     const user = userEvent.setup();
     screen.getByRole("tab", { name: "Alpha" }).focus();
 

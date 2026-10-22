@@ -15,19 +15,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function Probe({ seen }: { seen: { current: Auth | null } }) {
+  seen.current = useAuth();
+  return <output data-testid="who">{seen.current.ready ? (seen.current.user?.email ?? "nobody") : "loading"}</output>;
+}
+
 /** Mounts the provider and hands back the live context, re-read after every render. */
 function mount(fetchMock: ReturnType<typeof vi.fn>) {
   vi.stubGlobal("fetch", fetchMock);
   const client = new QueryClient();
   const seen: { current: Auth | null } = { current: null };
-  function Probe() {
-    seen.current = useAuth();
-    return <output data-testid="who">{seen.current.ready ? (seen.current.user?.email ?? "nobody") : "loading"}</output>;
-  }
   render(
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <Probe />
+        <Probe seen={seen} />
       </AuthProvider>
     </QueryClientProvider>,
   );
