@@ -1,0 +1,68 @@
+# Guardiano web: serves the SPA and reverse-proxies /api to the backend (same origin, no CORS).
+server {
+    listen 8080;
+    server_name _;
+    server_tokens off;
+    root /usr/share/nginx/html;
+
+    client_max_body_size ${MAX_UPLOAD_MB}m;
+
+    # Client IP: only trust X-Forwarded-For from REAL_IP_FROM (your TLS proxy / load balancer).
+    # $remote_addr is then the real client and is the only value forwarded to the backend, so
+    # clients cannot spoof their address (which would bypass the login rate limit).
+    set_real_ip_from ${REAL_IP_FROM};
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+    gzip_min_length 1024;
+
+    location = /nginx-health {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    # FastAPI's interactive documentation loads Swagger UI/ReDoc from their upstream CDNs, and
+    # Swagger's bootstrap is inline. Keep that exception confined to the documentation pages: the
+    # application and every JSON API response retain the stricter default policy below.
+    location ~ ^/api/(docs(?:/oauth2-redirect)?|redoc)$ {
+        proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-ID $request_id;
+        include /etc/nginx/snippets/docs-security-headers.conf;
+    }
+
+    location /api/ {
+        proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_read_timeout 300s;
+        proxy_request_buffering off;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    # Hashed build output (vite build.assetsDir). Not "/assets/", which is an SPA route.
+    location /static/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri /index.html;
+    }
+}

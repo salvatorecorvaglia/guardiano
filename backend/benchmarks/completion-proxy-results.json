@@ -1,0 +1,51 @@
+{
+  "seeded_findings": 100000,
+  "read_workload": "mixed",
+  "transport": "https-reverse-proxy",
+  "benchmark_runtime_versions": {
+    "python": "3.13.13",
+    "fastapi": "0.156.4",
+    "sqlalchemy": "2.1.5"
+  },
+  "history_rows": 275000,
+  "upload_target": "same-populated-asset",
+  "read_routes": [
+    "/api/v1/findings",
+    "/api/v1/analytics/summary",
+    "/api/v1/analytics/trends",
+    "/api/v1/search"
+  ],
+  "upload_findings_each": 1000,
+  "concurrent_uploads": 2,
+  "read_p95_seconds": 1.3011476569006846,
+  "concurrent_read_p95_seconds": 1.346414050002204,
+  "upload_seconds": [
+    0.9894887500013283,
+    0.614949582999543
+  ],
+  "route_p95_seconds": {
+    "baseline": {
+      "/api/v1/findings": 0.2607827780502703,
+      "/api/v1/analytics/summary": 0.44453035174683464,
+      "/api/v1/analytics/trends": 1.3362915481002346,
+      "/api/v1/search": 0.08242591904891014
+    },
+    "concurrent": {
+      "/api/v1/findings": 0.3658140421450298,
+      "/api/v1/analytics/summary": 0.537894767148282,
+      "/api/v1/analytics/trends": 1.3548859546463063,
+      "/api/v1/search": 0.15448700929991901
+    }
+  },
+  "process_max_rss": 211566592,
+  "rss_unit": "bytes",
+  "recorded_date": "2026-10-21",
+  "environment": "macOS arm64; local verified TLS proxy, frontend nginx, Gunicorn; PostgreSQL 16; analyzed seed tables",
+  "server_runtime_versions": {
+    "python": "3.12.15",
+    "fastapi": "0.156.4",
+    "certifi": "2026.10.19",
+    "alembic": "1.20.0",
+    "sqlalchemy": "2.1.5"
+  }
+}

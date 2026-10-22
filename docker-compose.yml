@@ -1,0 +1,88 @@
+# Guardiano - local / single-host stack.
+#   cp .env.example .env && docker compose up --build   ->  http://localhost:8080
+name: guardiano
+
+services:
+  db:
+    container_name: guardiano-db
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-guardiano}
+      POSTGRES_USER: ${POSTGRES_USER:-guardiano}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guardiano}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    container_name: guardiano-backend
+    build:
+      context: ./backend
+    image: ${BACKEND_IMAGE:-${REGISTRY:-guardiano}/backend:${TAG:-latest}}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-guardiano}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guardiano}
+      POSTGRES_DB: ${POSTGRES_DB:-guardiano}
+      ENV: ${ENV:-development}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Background jobs and periodic tasks (risk-acceptance expiry, notifications, feed sync).
+  worker:
+    container_name: guardiano-worker
+    build:
+      context: ./backend
+    image: ${BACKEND_IMAGE:-${REGISTRY:-guardiano}/backend:${TAG:-latest}}
+    command: ["worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-guardiano}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guardiano}
+      POSTGRES_DB: ${POSTGRES_DB:-guardiano}
+      ENV: ${ENV:-development}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/tmp/guardiano-worker.heartbeat') > 120)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    container_name: guardiano-frontend
+    build:
+      context: ./frontend
+    image: ${FRONTEND_IMAGE:-${REGISTRY:-guardiano}/frontend:${TAG:-latest}}
+    environment:
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+      REAL_IP_FROM: ${REAL_IP_FROM:-127.0.0.1/32}
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

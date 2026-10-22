@@ -1,0 +1,64 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Semgrep OSS",
+          "semanticVersion": "1.85.0",
+          "rules": [
+            {
+              "id": "javascript.express.security.injection.tainted-sql-string.tainted-sql-string",
+              "name": "javascript.express.security.injection.tainted-sql-string.tainted-sql-string",
+              "shortDescription": { "text": "Semgrep Finding: tainted-sql-string" },
+              "fullDescription": { "text": "Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection." },
+              "help": { "text": "Use parameterized queries or an ORM such as Sequelize with bind parameters." },
+              "helpUri": "https://semgrep.dev/r/javascript.express.security.injection.tainted-sql-string.tainted-sql-string",
+              "defaultConfiguration": { "level": "error" },
+              "properties": { "precision": "very-high", "tags": ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')", "HIGH CONFIDENCE", "OWASP-A03:2021 - Injection", "security"] }
+            },
+            {
+              "id": "javascript.express.security.audit.express-open-redirect.express-open-redirect",
+              "name": "javascript.express.security.audit.express-open-redirect.express-open-redirect",
+              "shortDescription": { "text": "Semgrep Finding: express-open-redirect" },
+              "fullDescription": { "text": "The application redirects to a URL specified by user-supplied input `req` that is not validated. This could redirect users to malicious locations." },
+              "help": { "text": "Validate redirect targets against an allow-list of internal paths." },
+              "defaultConfiguration": { "level": "warning" },
+              "properties": { "tags": ["CWE-601: URL Redirection to Untrusted Site ('Open Redirect')", "security"] }
+            },
+            {
+              "id": "javascript.jsonwebtoken.security.jwt-none-alg.jwt-none-alg",
+              "name": "javascript.jsonwebtoken.security.jwt-none-alg.jwt-none-alg",
+              "shortDescription": { "text": "Semgrep Finding: jwt-none-alg" },
+              "fullDescription": { "text": "Detected use of the 'none' algorithm in a JWT token. The 'none' algorithm assumes the integrity of the token has already been verified." },
+              "help": { "text": "Explicitly pin the accepted algorithms, e.g. { algorithms: ['RS256'] }." },
+              "defaultConfiguration": { "level": "error" },
+              "properties": { "tags": ["CWE-327: Use of a Broken or Risky Cryptographic Algorithm", "security"] }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "javascript.express.security.injection.tainted-sql-string.tainted-sql-string",
+          "level": "error",
+          "message": { "text": "Detected user input used to manually construct a SQL string." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "./src/routes/orders.js", "uriBaseId": "%SRCROOT%" }, "region": { "startLine": 42, "endLine": 42, "snippet": { "text": "db.query(\"SELECT * FROM orders WHERE id = \" + req.params.id)" } } } } ]
+        },
+        {
+          "ruleId": "javascript.express.security.audit.express-open-redirect.express-open-redirect",
+          "level": "warning",
+          "message": { "text": "The application redirects to a URL specified by user-supplied input `req` that is not validated." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "src/routes/auth.js" }, "region": { "startLine": 64, "endLine": 64, "snippet": { "text": "res.redirect(req.query.next)" } } } } ]
+        },
+        {
+          "ruleId": "javascript.jsonwebtoken.security.jwt-none-alg.jwt-none-alg",
+          "level": "error",
+          "message": { "text": "Detected use of the 'none' algorithm in a JWT token." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "src/auth/jwt.js" }, "region": { "startLine": 21, "endLine": 21, "snippet": { "text": "jwt.verify(token, secret, { algorithms: ['HS256', 'none'] })" } } } } ]
+        }
+      ]
+    }
+  ]
+}

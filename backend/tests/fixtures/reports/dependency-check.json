@@ -1,0 +1,68 @@
+{
+  "reportSchema": "1.1",
+  "scanInfo": {
+    "engineVersion": "10.0.4"
+  },
+  "projectInfo": {
+    "name": "payments-api",
+    "reportDate": "2026-09-20T09:00:00Z"
+  },
+  "dependencies": [
+    {
+      "fileName": "log4j-core-2.14.1.jar",
+      "filePath": "/app/lib/log4j-core-2.14.1.jar",
+      "license": "Apache-2.0",
+      "packages": [
+        {
+          "id": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2021-44228",
+          "severity": "CRITICAL",
+          "cvssv3": {
+            "baseScore": 10.0,
+            "baseSeverity": "CRITICAL"
+          },
+          "description": "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP endpoints.",
+          "cwes": [
+            "CWE-502"
+          ],
+          "references": [
+            {
+              "name": "NVD",
+              "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fileName": "commons-text-1.9.jar",
+      "filePath": "/app/lib/commons-text-1.9.jar",
+      "packages": [
+        {
+          "id": "pkg:maven/org.apache.commons/commons-text@1.9"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2022-42889",
+          "severity": "HIGH",
+          "cvssv3": {
+            "baseScore": 9.8,
+            "baseSeverity": "CRITICAL"
+          },
+          "description": "Apache Commons Text performs variable interpolation allowing script evaluation.",
+          "cwes": [
+            "CWE-94"
+          ],
+          "references": []
+        }
+      ]
+    }
+  ]
+}

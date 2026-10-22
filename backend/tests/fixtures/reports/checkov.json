@@ -1,0 +1,29 @@
+[
+  {
+    "check_type": "terraform",
+    "results": {
+      "passed_checks": [
+        {"check_id": "CKV_AWS_19", "check_name": "Ensure all data stored in the S3 bucket is securely encrypted at rest", "file_path": "/infra/s3.tf", "repo_file_path": "/infra/s3.tf", "file_line_range": [1, 12], "resource": "aws_s3_bucket.logs", "severity": null}
+      ],
+      "failed_checks": [
+        {"check_id": "CKV_AWS_18", "bc_check_id": "BC_AWS_S3_13", "check_name": "Ensure the S3 bucket has access logging enabled", "check_result": {"result": "FAILED"}, "file_path": "/infra/s3.tf", "repo_file_path": "/infra/s3.tf", "file_line_range": [1, 12], "resource": "aws_s3_bucket.logs", "severity": null, "guideline": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/s3-policies/s3-13-enable-logging"},
+        {"check_id": "CKV_AWS_24", "check_name": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 22", "check_result": {"result": "FAILED"}, "file_path": "/infra/network.tf", "repo_file_path": "/infra/network.tf", "file_line_range": [5, 21], "resource": "aws_security_group.bastion", "severity": "HIGH", "guideline": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-networking-policies/networking-1-port-security"}
+      ],
+      "skipped_checks": [],
+      "parsing_errors": []
+    },
+    "summary": {"passed": 1, "failed": 2, "skipped": 0, "parsing_errors": 0, "resource_count": 3, "checkov_version": "3.2.255"}
+  },
+  {
+    "check_type": "kubernetes",
+    "results": {
+      "passed_checks": [],
+      "failed_checks": [
+        {"check_id": "CKV_K8S_20", "check_name": "Containers should not run with allowPrivilegeEscalation", "check_result": {"result": "FAILED"}, "file_path": "/k8s/deployment.yaml", "repo_file_path": "/k8s/deployment.yaml", "file_line_range": [1, 40], "resource": "Deployment.default.payments-api", "severity": "MEDIUM", "guideline": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/kubernetes-policies/kubernetes-policy-index/bc-k8s-19"}
+      ],
+      "skipped_checks": [],
+      "parsing_errors": []
+    },
+    "summary": {"passed": 0, "failed": 1, "skipped": 0, "parsing_errors": 0, "resource_count": 1, "checkov_version": "3.2.255"}
+  }
+]

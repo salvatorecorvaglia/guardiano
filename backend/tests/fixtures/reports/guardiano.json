@@ -1,0 +1,26 @@
+{
+  "schema": "guardiano/v1",
+  "tool": { "name": "Internal Secret Scanner", "version": "2.3.0" },
+  "scan_type": "sast",
+  "findings": [
+    {
+      "title": "AWS access key committed to repository",
+      "severity": "critical",
+      "description": "An AWS access key id and secret access key pair were found in a tracked configuration file.",
+      "remediation": "Revoke the key in IAM immediately, purge it from git history and load credentials from the environment.",
+      "cwe": ["CWE-798"],
+      "rule_id": "aws-access-key",
+      "file_path": "deploy/terraform/provider.tf",
+      "line_start": 3,
+      "snippet": "access_key = \"AKIA****************\""
+    },
+    {
+      "title": "Private key embedded in source",
+      "severity": "high",
+      "cwe": "CWE-321",
+      "rule_id": "private-key",
+      "file_path": "src/certs/dev.pem",
+      "line_start": 1
+    }
+  ]
+}

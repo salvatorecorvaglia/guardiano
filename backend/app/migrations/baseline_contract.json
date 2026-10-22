@@ -1,0 +1,4797 @@
+{
+  "acceptance_requests": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('acceptance_requests_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "state",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "justification",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "until",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "requested_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "decided_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "decided_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "decision_note",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "acceptance_requests_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "acceptance_requests_decided_by_id_fkey",
+        "constrained_columns": [
+          "decided_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "acceptance_requests_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "acceptance_requests_requested_by_id_fkey",
+        "constrained_columns": [
+          "requested_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_acceptance_requests_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_acceptance_requests_finding_id",
+        "unique": false,
+        "column_names": [
+          "finding_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "uq_acceptance_requests_pending",
+        "unique": true,
+        "column_names": [
+          "finding_id"
+        ],
+        "dialect_options": {
+          "postgresql_where": "((state)::text = 'pending'::text)",
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "api_tokens": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('api_tokens_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "prefix",
+        "type": "VARCHAR(16)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "token_hash",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scopes",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_used_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "revoked_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "api_tokens_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "api_tokens_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_api_tokens_token_hash",
+        "unique": true,
+        "column_names": [
+          "token_hash"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_api_tokens_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "assets": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('assets_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "type",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "repo_url",
+        "type": "VARCHAR(500)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "owner",
+        "type": "VARCHAR(200)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "criticality",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "tags",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "team_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "default_branch",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "default_assignee_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "product_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "environment",
+        "type": "VARCHAR(20)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "assets_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "assets_default_assignee_id_fkey",
+        "constrained_columns": [
+          "default_assignee_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "assets_product_id_fkey",
+        "constrained_columns": [
+          "product_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "products",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "assets_team_id_fkey",
+        "constrained_columns": [
+          "team_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "teams",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_assets_name",
+        "unique": true,
+        "column_names": [
+          "name"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_assets_product_id",
+        "unique": false,
+        "column_names": [
+          "product_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_assets_team_id",
+        "unique": false,
+        "column_names": [
+          "team_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "audit_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('audit_log_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "actor_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "actor_email",
+        "type": "VARCHAR(320)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "action",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "target_type",
+        "type": "VARCHAR(30)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "target_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "target_label",
+        "type": "VARCHAR(320)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "changes",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "ip",
+        "type": "VARCHAR(64)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "audit_log_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "audit_log_actor_id_fkey",
+        "constrained_columns": [
+          "actor_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_audit_log_action",
+        "unique": false,
+        "column_names": [
+          "action"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_audit_log_actor_id",
+        "unique": false,
+        "column_names": [
+          "actor_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_audit_log_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "component_scans": {
+    "columns": [
+      {
+        "name": "component_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scan_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "component_id",
+        "scan_id"
+      ],
+      "name": "component_scans_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "component_scans_component_id_fkey",
+        "constrained_columns": [
+          "component_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "components",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "component_scans_scan_id_fkey",
+        "constrained_columns": [
+          "scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_component_scans_scan_id",
+        "unique": false,
+        "column_names": [
+          "scan_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "components": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('components_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "key",
+        "type": "VARCHAR(400)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(300)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "version",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "ecosystem",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "purl",
+        "type": "VARCHAR(1000)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "licenses",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "first_seen_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_seen_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_scan_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "components_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "components_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "components_last_scan_id_fkey",
+        "constrained_columns": [
+          "last_scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "asset_id",
+          "key"
+        ],
+        "name": "uq_components_asset_key",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ix_components_asset_id",
+        "unique": false,
+        "column_names": [
+          "asset_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_components_last_seen_at",
+        "unique": false,
+        "column_names": [
+          "last_seen_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_components_licenses",
+        "unique": false,
+        "column_names": [
+          "licenses"
+        ],
+        "dialect_options": {
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_components_name",
+        "unique": false,
+        "column_names": [
+          "name"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_components_purl",
+        "unique": false,
+        "column_names": [
+          "purl"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "uq_components_asset_key",
+        "unique": true,
+        "column_names": [
+          "asset_id",
+          "key"
+        ],
+        "duplicates_constraint": "uq_components_asset_key",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "finding_events": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('finding_events_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "actor_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "event",
+        "type": "VARCHAR(30)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "from_status",
+        "type": "VARCHAR(20)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "to_status",
+        "type": "VARCHAR(20)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "from_severity",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "to_severity",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "comment",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scan_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "finding_events_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "finding_events_actor_id_fkey",
+        "constrained_columns": [
+          "actor_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "finding_events_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "finding_events_scan_id_fkey",
+        "constrained_columns": [
+          "scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_finding_events_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_finding_events_finding_id",
+        "unique": false,
+        "column_names": [
+          "finding_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "finding_links": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('finding_links_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "integration_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "system",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "external_key",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "remote_status",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "remote_done_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "synced_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "finding_links_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "finding_links_created_by_id_fkey",
+        "constrained_columns": [
+          "created_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "finding_links_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "finding_links_integration_id_fkey",
+        "constrained_columns": [
+          "integration_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "integrations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "finding_id",
+          "integration_id"
+        ],
+        "name": "uq_finding_links_finding_int",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ix_finding_links_finding_id",
+        "unique": false,
+        "column_names": [
+          "finding_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "uq_finding_links_finding_int",
+        "unique": true,
+        "column_names": [
+          "finding_id",
+          "integration_id"
+        ],
+        "duplicates_constraint": "uq_finding_links_finding_int",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "finding_scans": {
+    "columns": [
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scan_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "finding_id",
+        "scan_id"
+      ],
+      "name": "finding_scans_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "finding_scans_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "finding_scans_scan_id_fkey",
+        "constrained_columns": [
+          "scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_finding_scans_scan_id",
+        "unique": false,
+        "column_names": [
+          "scan_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "findings": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('findings_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "type",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "dedup_key",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(500)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "remediation",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "severity",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scanner_severity",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "severity_override",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "cvss_score",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "cwe",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "rule_id",
+        "type": "VARCHAR(300)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "tools",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "file_path",
+        "type": "VARCHAR(1000)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "line_start",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "line_end",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "snippet",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "package_name",
+        "type": "VARCHAR(300)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "package_version",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "ecosystem",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "purl",
+        "type": "VARCHAR(1000)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "cve_id",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "vuln_id",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "fixed_version",
+        "type": "VARCHAR(200)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "references",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "resource",
+        "type": "VARCHAR(500)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(2000)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "http_method",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "parameter",
+        "type": "VARCHAR(300)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "first_seen_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_seen_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "closed_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "first_scan_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_scan_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "assignee_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "status_justification",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "risk_accepted_until",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "due_at_override",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "sla_breach_due",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "acceptance_warned_until",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "tags",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": "'{}'::character varying[]",
+        "computed": null
+      },
+      {
+        "name": "occurrence_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "fingerprint",
+        "type": "VARCHAR(200)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "search_vector",
+        "type": "TSVECTOR",
+        "nullable": false,
+        "default": null,
+        "computed": {
+          "sqltext": "(((setweight(to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, (((((((COALESCE(cve_id, ''::character varying))::text || ' '::text) || (COALESCE(vuln_id, ''::character varying))::text) || ' '::text) || (COALESCE(rule_id, ''::character varying))::text) || ' '::text) || (COALESCE(package_name, ''::character varying))::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, (COALESCE(file_path, ''::character varying))::text), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'C'::\"char\"))",
+          "persisted": true
+        }
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "findings_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "findings_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "findings_assignee_id_fkey",
+        "constrained_columns": [
+          "assignee_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "findings_first_scan_id_fkey",
+        "constrained_columns": [
+          "first_scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "findings_last_scan_id_fkey",
+        "constrained_columns": [
+          "last_scan_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scans",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "asset_id",
+          "dedup_key"
+        ],
+        "name": "uq_findings_asset_dedup",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ix_findings_asset_fingerprint",
+        "unique": false,
+        "column_names": [
+          "asset_id",
+          "fingerprint"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_asset_status_severity",
+        "unique": false,
+        "column_names": [
+          "asset_id",
+          "status",
+          "severity"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_assignee_id",
+        "unique": false,
+        "column_names": [
+          "assignee_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_closed_at",
+        "unique": false,
+        "column_names": [
+          "closed_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_cve_id",
+        "unique": false,
+        "column_names": [
+          "cve_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_cve_id_trgm",
+        "unique": false,
+        "column_names": [
+          "cve_id"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "cve_id": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_file_path_trgm",
+        "unique": false,
+        "column_names": [
+          "file_path"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "file_path": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_first_seen_at",
+        "unique": false,
+        "column_names": [
+          "first_seen_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_package_name",
+        "unique": false,
+        "column_names": [
+          "package_name"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_package_name_trgm",
+        "unique": false,
+        "column_names": [
+          "package_name"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "package_name": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_rule_id_trgm",
+        "unique": false,
+        "column_names": [
+          "rule_id"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "rule_id": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_search",
+        "unique": false,
+        "column_names": [
+          "search_vector"
+        ],
+        "dialect_options": {
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_severity",
+        "unique": false,
+        "column_names": [
+          "severity"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_status_severity",
+        "unique": false,
+        "column_names": [
+          "status",
+          "severity"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_tags",
+        "unique": false,
+        "column_names": [
+          "tags"
+        ],
+        "dialect_options": {
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_title_trgm",
+        "unique": false,
+        "column_names": [
+          "title"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "title": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_tools",
+        "unique": false,
+        "column_names": [
+          "tools"
+        ],
+        "dialect_options": {
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_findings_vuln_id_trgm",
+        "unique": false,
+        "column_names": [
+          "vuln_id"
+        ],
+        "dialect_options": {
+          "postgresql_ops": {
+            "vuln_id": "gin_trgm_ops"
+          },
+          "postgresql_using": "gin",
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "uq_findings_asset_dedup",
+        "unique": true,
+        "column_names": [
+          "asset_id",
+          "dedup_key"
+        ],
+        "duplicates_constraint": "uq_findings_asset_dedup",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "gate_policies": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('gate_policies_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "conditions",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "gate_policies_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "gate_policies_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "uq_gate_policies_asset",
+        "unique": true,
+        "column_names": [
+          "asset_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": true
+        }
+      }
+    ]
+  },
+  "integrations": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('integrations_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "kind",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "base_url",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "project",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR(200)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "secret_encrypted",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "issue_type",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scm_feedback",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "false",
+        "computed": null
+      },
+      {
+        "name": "close_resolves_finding",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "false",
+        "computed": null
+      },
+      {
+        "name": "done_transition",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "reopen_transition",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "auto_ticket_min_severity",
+        "type": "VARCHAR(10)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "auto_ticket_kev",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "false",
+        "computed": null
+      },
+      {
+        "name": "labels",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_error",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_used_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "integrations_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "integrations_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "jobs": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('jobs_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "kind",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "payload",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "attempts",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "priority",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "100",
+        "computed": null
+      },
+      {
+        "name": "max_attempts",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "run_after",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "claim_token",
+        "type": "VARCHAR(32)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "locked_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "finished_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_error",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "jobs_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_jobs_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_jobs_status_priority_run_after",
+        "unique": false,
+        "column_names": [
+          "status",
+          "priority",
+          "run_after"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_jobs_status_run_after",
+        "unique": false,
+        "column_names": [
+          "status",
+          "run_after"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "kev_announcements": {
+    "columns": [
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "cve_id",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "announced_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "finding_id",
+        "cve_id"
+      ],
+      "name": "kev_announcements_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "kev_announcements_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_kev_announcements_announced_at",
+        "unique": false,
+        "column_names": [
+          "announced_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "license_policies": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('license_policies_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "licence",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "rule",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "note",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "license_policies_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_license_policies_licence",
+        "unique": true,
+        "column_names": [
+          "licence"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "notifications": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('notifications_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "kind",
+        "type": "VARCHAR(30)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "actor_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "text",
+        "type": "VARCHAR(500)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "read_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "notifications_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "notifications_actor_id_fkey",
+        "constrained_columns": [
+          "actor_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "notifications_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "notifications_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_notifications_finding_id",
+        "unique": false,
+        "column_names": [
+          "finding_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_notifications_user_read_created",
+        "unique": false,
+        "column_names": [
+          "user_id",
+          "read_at",
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "oidc_states": {
+    "columns": [
+      {
+        "name": "state",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "nonce",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "code_verifier",
+        "type": "VARCHAR(128)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "redirect_to",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "state"
+      ],
+      "name": "oidc_states_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_oidc_states_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "password_resets": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('password_resets_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "token_hash",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "used_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "requested_ip",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "password_resets_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "password_resets_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_password_resets_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_password_resets_token_hash",
+        "unique": true,
+        "column_names": [
+          "token_hash"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_password_resets_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "periodic_tasks": {
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_run_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "name"
+      ],
+      "name": "periodic_tasks_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "pr_comments": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('pr_comments_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "integration_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "pr_number",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "comment_id",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "pr_comments_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "pr_comments_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "pr_comments_integration_id_fkey",
+        "constrained_columns": [
+          "integration_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "integrations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "integration_id",
+          "asset_id",
+          "pr_number"
+        ],
+        "name": "uq_pr_comments",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "uq_pr_comments",
+        "unique": true,
+        "column_names": [
+          "integration_id",
+          "asset_id",
+          "pr_number"
+        ],
+        "duplicates_constraint": "uq_pr_comments",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "products": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('products_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "products_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "name"
+        ],
+        "name": "products_name_key",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "products_name_key",
+        "unique": true,
+        "column_names": [
+          "name"
+        ],
+        "duplicates_constraint": "products_name_key",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "recovery_codes": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('recovery_codes_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "code_hash",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "used_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "recovery_codes_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "recovery_codes_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_recovery_codes_code_hash",
+        "unique": false,
+        "column_names": [
+          "code_hash"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_recovery_codes_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "refresh_sessions": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "VARCHAR(32)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "current_jti",
+        "type": "VARCHAR(32)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "revoked_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "is_sso",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "false",
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "refresh_sessions_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "refresh_sessions_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_refresh_sessions_expires_at",
+        "unique": false,
+        "column_names": [
+          "expires_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_refresh_sessions_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "report_schedules": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('report_schedules_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "frequency",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "product_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "recipient_ids",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_sent_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "report_schedules_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "report_schedules_created_by_id_fkey",
+        "constrained_columns": [
+          "created_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      },
+      {
+        "name": "report_schedules_product_id_fkey",
+        "constrained_columns": [
+          "product_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "products",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "revoked_tokens": {
+    "columns": [
+      {
+        "name": "jti",
+        "type": "VARCHAR(32)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "jti"
+      ],
+      "name": "revoked_tokens_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "revoked_tokens_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_revoked_tokens_expires_at",
+        "unique": false,
+        "column_names": [
+          "expires_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_revoked_tokens_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "saved_views": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('saved_views_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "query",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "shared",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "saved_views_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "saved_views_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_saved_views_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "scans": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('scans_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "scan_type",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "tool_name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "tool_version",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "format",
+        "type": "VARCHAR(30)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "branch",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "commit_sha",
+        "type": "VARCHAR(64)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "source",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "uploaded_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "file_name",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "file_sha256",
+        "type": "VARCHAR(64)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "inventory_complete",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "total_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "new_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "duplicate_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "reopened_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "auto_resolved_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "gate_result",
+        "type": "JSONB",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "preview_result",
+        "type": "JSONB",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "scans_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "scans_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "scans_uploaded_by_id_fkey",
+        "constrained_columns": [
+          "uploaded_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_scans_asset_id",
+        "unique": false,
+        "column_names": [
+          "asset_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_scans_commit_asset_tool",
+        "unique": false,
+        "column_names": [
+          "commit_sha",
+          "asset_id",
+          "tool_name",
+          "scan_type"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_scans_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "sla_policies": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('sla_policies_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "severity",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "criticality",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "days",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "sla_policies_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "severity",
+          "criticality"
+        ],
+        "name": "uq_sla_policies_severity_criticality",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "uq_sla_policies_severity_criticality",
+        "unique": true,
+        "column_names": [
+          "severity",
+          "criticality"
+        ],
+        "duplicates_constraint": "uq_sla_policies_severity_criticality",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "team_members": {
+    "columns": [
+      {
+        "name": "team_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "team_id",
+        "user_id"
+      ],
+      "name": "team_members_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "team_members_team_id_fkey",
+        "constrained_columns": [
+          "team_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "teams",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "team_members_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "teams": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('teams_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "teams_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_teams_name",
+        "unique": true,
+        "column_names": [
+          "name"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "ticket_operations": {
+    "columns": [
+      {
+        "name": "finding_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "integration_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "marker",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "dispatched_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "finding_id",
+        "integration_id"
+      ],
+      "name": "ticket_operations_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "ticket_operations_finding_id_fkey",
+        "constrained_columns": [
+          "finding_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "findings",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "ticket_operations_integration_id_fkey",
+        "constrained_columns": [
+          "integration_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "integrations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [
+      {
+        "column_names": [
+          "marker"
+        ],
+        "name": "ticket_operations_marker_key",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ticket_operations_marker_key",
+        "unique": true,
+        "column_names": [
+          "marker"
+        ],
+        "duplicates_constraint": "ticket_operations_marker_key",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "triage_rules": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('triage_rules_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "priority",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "match",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "action",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_by_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "applied_count",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "triage_rules_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "triage_rules_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      },
+      {
+        "name": "triage_rules_created_by_id_fkey",
+        "constrained_columns": [
+          "created_by_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "SET NULL"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_triage_rules_asset_id",
+        "unique": false,
+        "column_names": [
+          "asset_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_triage_rules_enabled_priority",
+        "unique": false,
+        "column_names": [
+          "enabled",
+          "priority"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "users": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('users_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR(320)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "full_name",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "password_hash",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "role",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "is_active",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "token_version",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_login_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "failed_logins",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "0",
+        "computed": null
+      },
+      {
+        "name": "locked_until",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "oidc_subject",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "mfa_secret",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "mfa_enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "false",
+        "computed": null
+      },
+      {
+        "name": "mfa_confirmed_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "mfa_last_step",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "mfa_failed_logins",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "0",
+        "computed": null
+      },
+      {
+        "name": "mfa_locked_until",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "digest_frequency",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": "'off'::character varying",
+        "computed": null
+      },
+      {
+        "name": "notify_on_assignment",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": "true",
+        "computed": null
+      },
+      {
+        "name": "last_digest_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "users_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_users_email",
+        "unique": true,
+        "column_names": [
+          "email"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_users_oidc_subject",
+        "unique": true,
+        "column_names": [
+          "oidc_subject"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "vuln_aliases": {
+    "columns": [
+      {
+        "name": "vuln_id",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "cve_id",
+        "type": "VARCHAR(50)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "checked_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "vuln_id"
+      ],
+      "name": "vuln_aliases_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  "vuln_intel": {
+    "columns": [
+      {
+        "name": "cve_id",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "epss",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "epss_percentile",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "in_kev",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "kev_due_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "kev_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "kev_ransomware",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "cve_id"
+      ],
+      "name": "vuln_intel_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_vuln_intel_kev_epss",
+        "unique": false,
+        "column_names": [
+          "in_kev",
+          "epss"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "webhook_deliveries": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('webhook_deliveries_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "webhook_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "event",
+        "type": "VARCHAR(40)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "payload",
+        "type": "JSONB",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "status_code",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "error",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "attempts",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "delivered_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "webhook_deliveries_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "webhook_deliveries_webhook_id_fkey",
+        "constrained_columns": [
+          "webhook_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "webhooks",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      {
+        "name": "ix_webhook_deliveries_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_webhook_deliveries_webhook_created",
+        "unique": false,
+        "column_names": [
+          "webhook_id",
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ]
+  },
+  "webhooks": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('webhooks_id_seq'::regclass)",
+        "computed": null
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "secret_encrypted",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "secret",
+        "type": "VARCHAR(64)",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "format",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "events",
+        "type": "ARRAY",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "min_severity",
+        "type": "VARCHAR(10)",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "asset_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_status",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_error",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "last_delivery_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      },
+      {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "computed": null
+      }
+    ],
+    "primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "webhooks_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    },
+    "foreign_keys": [
+      {
+        "name": "webhooks_asset_id_fkey",
+        "constrained_columns": [
+          "asset_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "assets",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "comment": null
+      }
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  }
+}

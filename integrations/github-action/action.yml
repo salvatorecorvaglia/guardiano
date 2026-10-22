@@ -1,0 +1,128 @@
+name: Upload scan to Guardiano
+description: Push a SAST/SCA report to Guardiano and fail the build when its quality gate fails.
+author: Guardiano
+
+inputs:
+  url:
+    description: Base URL of Guardiano, e.g. https://guardiano.example.com
+    required: true
+  token:
+    description: API token with the 'ingest' scope (store it as a repository secret)
+    required: true
+  file:
+    description: Report to upload (SARIF, CycloneDX, Trivy, Semgrep or Guardiano JSON)
+    required: true
+  asset-name:
+    description: Asset to attach the scan to; created automatically when it does not exist
+    required: false
+    default: ${{ github.event.repository.name }}
+  branch:
+    description: Branch the scan ran on. On a pull request pass github.head_ref so the scan is a preview.
+    required: false
+    default: ${{ github.head_ref || github.ref_name }}
+  commit-sha:
+    description: Commit the scan ran on
+    required: false
+    default: ${{ github.sha }}
+  scan-type:
+    description: "sast, sca, iac or dast; defaults to the format's own type"
+    required: false
+    default: ""
+  format:
+    description: Override format auto-detection
+    required: false
+    default: ""
+  close-missing:
+    description: Resolve findings from this tool that the report no longer contains (full scans of the default branch only)
+    required: false
+    default: "false"
+  preview:
+    description: Force preview mode, which evaluates the report without changing the inventory
+    required: false
+    default: "false"
+  fail-on-gate:
+    description: Fail this step when the quality gate fails
+    required: false
+    default: "true"
+
+outputs:
+  scan-id:
+    description: Id of the created scan
+    value: ${{ steps.upload.outputs.scan-id }}
+  gate-passed:
+    description: "true, false, or empty when no quality gate applied"
+    value: ${{ steps.upload.outputs.gate-passed }}
+  preview:
+    description: true when the scan was ingested as a preview
+    value: ${{ steps.upload.outputs.preview }}
+
+runs:
+  using: composite
+  steps:
+    - id: upload
+      shell: bash
+      env:
+        GUARDIANO_URL: ${{ inputs.url }}
+        GUARDIANO_TOKEN: ${{ inputs.token }}
+        REPORT: ${{ inputs.file }}
+        ASSET_NAME: ${{ inputs.asset-name }}
+        BRANCH: ${{ inputs.branch }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
+        SCAN_TYPE: ${{ inputs.scan-type }}
+        FORMAT: ${{ inputs.format }}
+        CLOSE_MISSING: ${{ inputs.close-missing }}
+        PREVIEW: ${{ inputs.preview }}
+        EVENT_NAME: ${{ github.event_name }}
+        FAIL_ON_GATE: ${{ inputs.fail-on-gate }}
+      run: |
+        set -euo pipefail
+        [ -f "$REPORT" ] || { echo "::error::Report not found: $REPORT"; exit 1; }
+
+        # Note: "[ -n "$X" ] && args+=(...)" would abort the step under "set -e" whenever X is empty.
+        if [[ "$EVENT_NAME" == pull_request* ]]; then PREVIEW=true; fi
+        args=(-F "file=@${REPORT}" -F "asset_name=${ASSET_NAME}" -F "close_missing=${CLOSE_MISSING}" -F "preview=${PREVIEW}")
+        if [ -n "$BRANCH" ]; then args+=(-F "branch=${BRANCH}"); fi
+        if [ -n "$COMMIT_SHA" ]; then args+=(-F "commit_sha=${COMMIT_SHA}"); fi
+        if [ -n "$SCAN_TYPE" ]; then args+=(-F "scan_type=${SCAN_TYPE}"); fi
+        if [ -n "$FORMAT" ]; then args+=(-F "format=${FORMAT}"); fi
+
+        code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${GUARDIANO_URL%/}/api/v1/scans" \
+          -H "Authorization: Bearer ${GUARDIANO_TOKEN}" "${args[@]}") || {
+            echo "::error::Could not reach Guardiano at ${GUARDIANO_URL}"; exit 1; }
+        if [ "$code" != "201" ]; then
+          echo "::error::Guardiano rejected the upload (HTTP $code): $(jq -r '.detail // .' response.json)"
+          exit 1
+        fi
+
+        scan_id=$(jq -r '.id' response.json)
+        preview=$(jq -r 'if .source == "preview" then "true" else "false" end' response.json)
+        # Not ".gate.passed // empty": jq's // also replaces false, which would hide a failing gate.
+        gate_passed=$(jq -r 'if .gate == null then "" else (.gate.passed | tostring) end' response.json)
+        echo "scan-id=${scan_id}" >> "$GITHUB_OUTPUT"
+        echo "preview=${preview}" >> "$GITHUB_OUTPUT"
+        echo "gate-passed=${gate_passed}" >> "$GITHUB_OUTPUT"
+
+        {
+          echo "### Guardiano scan #${scan_id}"
+          if [ "$preview" = "true" ]; then
+            echo "Preview of \`$(jq -r '.preview.branch' response.json)\` (nothing was added to the inventory)."
+            jq -r '"- **\(.preview.counts.new)** new finding(s) of \(.preview.counts.total) reported"' response.json
+            jq -r '.preview.new[:20][] | "  - \(.severity): \(.title)"' response.json
+          else
+            jq -r '"- **\(.new_count)** new, \(.duplicate_count) known, \(.reopened_count) reopened, \(.auto_resolved_count) auto-resolved"' response.json
+          fi
+          if [ -n "$gate_passed" ]; then
+            if [ "$gate_passed" = "true" ]; then
+              echo "- Quality gate: **passed**"
+            else
+              echo "- Quality gate: **failed**"
+              jq -r '.gate.violations[] | "  - \(.message)"' response.json
+            fi
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ "$gate_passed" = "false" ]; then
+          jq -r '.gate.violations[] | "::error::Guardiano quality gate: \(.message)"' response.json
+          if [ "$FAIL_ON_GATE" = "true" ]; then exit 1; fi
+        fi
+        exit 0

@@ -1,0 +1,65 @@
+# Guardiano upload template for GitLab CI.
+#
+#   include:
+#     - remote: 'https://raw.githubusercontent.com/<you>/guardiano/main/integrations/gitlab/guardiano.gitlab-ci.yml'
+#
+#   semgrep:
+#     stage: test
+#     script: [semgrep --sarif -o semgrep.sarif .]
+#     artifacts: { paths: [semgrep.sarif] }
+#
+#   guardiano:
+#     extends: .guardiano-upload
+#     stage: test
+#     needs: [semgrep]
+#     variables:
+#       GUARDIANO_REPORT: semgrep.sarif
+#
+# Set GUARDIANO_URL and GUARDIANO_TOKEN (masked) in the project's CI/CD variables.
+# On a merge request the branch differs from the asset's default branch, so Guardiano ingests the
+# report as a preview: the quality gate still runs, but the inventory is untouched.
+
+.guardiano-upload:
+  image: alpine:3
+  variables:
+    GUARDIANO_ASSET: "$CI_PROJECT_NAME"
+    GUARDIANO_REPORT: ""
+    GUARDIANO_CLOSE_MISSING: "false"
+    GUARDIANO_PREVIEW: "false"
+    GUARDIANO_FAIL_ON_GATE: "true"
+  before_script:
+    - apk add --no-cache curl jq >/dev/null
+  script:
+    - |
+      set -eu
+      test -f "$GUARDIANO_REPORT" || { echo "Report not found: $GUARDIANO_REPORT"; exit 1; }
+      if [ "${CI_PIPELINE_SOURCE:-}" = "merge_request_event" ]; then GUARDIANO_PREVIEW=true; fi
+      branch="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+      code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${GUARDIANO_URL%/}/api/v1/scans" \
+        -H "Authorization: Bearer ${GUARDIANO_TOKEN}" \
+        -F "file=@${GUARDIANO_REPORT}" \
+        -F "asset_name=${GUARDIANO_ASSET}" \
+        -F "branch=${branch}" \
+        -F "commit_sha=${CI_COMMIT_SHA}" \
+        -F "close_missing=${GUARDIANO_CLOSE_MISSING}" \
+        -F "preview=${GUARDIANO_PREVIEW}")
+      if [ "$code" != "201" ]; then
+        echo "Guardiano rejected the upload (HTTP $code): $(jq -r '.detail // .' response.json)"
+        exit 1
+      fi
+      jq -r 'if .source == "preview"
+             then "Preview of \(.preview.branch): \(.preview.counts.new) new of \(.preview.counts.total) reported"
+             else "Scan #\(.id): \(.new_count) new, \(.duplicate_count) known, \(.reopened_count) reopened"
+             end' response.json
+      # Not ".gate.passed // empty": jq's // also replaces false, which would hide a failing gate.
+      gate=$(jq -r 'if .gate == null then "" else (.gate.passed | tostring) end' response.json)
+      if [ "$gate" = "false" ]; then
+        echo "Quality gate FAILED:"
+        jq -r '.gate.violations[] | "  - \(.message)"' response.json
+        if [ "$GUARDIANO_FAIL_ON_GATE" = "true" ]; then exit 1; fi
+      elif [ "$gate" = "true" ]; then
+        echo "Quality gate passed"
+      fi
+  artifacts:
+    when: always
+    paths: [response.json]

@@ -1,0 +1,372 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-01T10:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "OWASP Dependency-Track",
+          "version": "4.11.4"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "payments-api",
+      "name": "payments-api",
+      "version": "3.4.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lodash@4.17.20",
+      "name": "lodash",
+      "version": "4.17.20",
+      "purl": "pkg:npm/lodash@4.17.20",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimist@1.2.5",
+      "name": "minimist",
+      "version": "1.2.5",
+      "purl": "pkg:npm/minimist@1.2.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/axios@0.21.1",
+      "name": "axios",
+      "version": "0.21.1",
+      "purl": "pkg:npm/axios@0.21.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jsonwebtoken@8.5.1",
+      "name": "jsonwebtoken",
+      "version": "8.5.1",
+      "purl": "pkg:npm/jsonwebtoken@8.5.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/express@4.17.1",
+      "name": "express",
+      "version": "4.17.1",
+      "purl": "pkg:npm/express@4.17.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-core",
+      "version": "2.14.1",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "bom-ref": "v1",
+      "id": "CVE-2021-23337",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23337"
+      },
+      "ratings": [
+        {
+          "source": {
+            "name": "NVD"
+          },
+          "score": 7.2,
+          "severity": "high",
+          "method": "CVSSv31",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+        }
+      ],
+      "cwes": [
+        94
+      ],
+      "description": "Lodash versions prior to 4.17.21 are vulnerable to Command Injection via the template function.",
+      "recommendation": "Upgrade lodash to 4.17.21 or later.",
+      "advisories": [
+        {
+          "title": "GHSA-35jh-r3h4-6jhm",
+          "url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm"
+        }
+      ],
+      "affects": [
+        {
+          "ref": "pkg:npm/lodash@4.17.20",
+          "versions": [
+            {
+              "version": "4.17.21",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "v2",
+      "id": "CVE-2020-28500",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-28500"
+      },
+      "ratings": [
+        {
+          "score": 5.3,
+          "severity": "medium",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        1333
+      ],
+      "description": "Lodash versions prior to 4.17.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the toNumber, trim and trimEnd functions.",
+      "recommendation": "Upgrade lodash to 4.17.21 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/lodash@4.17.20"
+        }
+      ]
+    },
+    {
+      "bom-ref": "v3",
+      "id": "CVE-2021-44906",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44906"
+      },
+      "ratings": [
+        {
+          "score": 9.8,
+          "severity": "critical",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        1321
+      ],
+      "description": "Minimist <=1.2.5 is vulnerable to Prototype Pollution via file index.js, function setKey().",
+      "recommendation": "Upgrade minimist to 1.2.6 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/minimist@1.2.5",
+          "versions": [
+            {
+              "version": "1.2.6",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "v4",
+      "id": "GHSA-cph5-m8f7-6c5x",
+      "source": {
+        "name": "GitHub",
+        "url": "https://github.com/advisories/GHSA-cph5-m8f7-6c5x"
+      },
+      "references": [
+        {
+          "id": "CVE-2021-3749",
+          "source": {
+            "name": "NVD",
+            "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-3749"
+          }
+        }
+      ],
+      "ratings": [
+        {
+          "score": 7.5,
+          "severity": "high",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        1333
+      ],
+      "description": "axios is vulnerable to Inefficient Regular Expression Complexity (ReDoS) in the trim function.",
+      "recommendation": "Upgrade axios to 0.21.2 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/axios@0.21.1",
+          "versions": [
+            {
+              "version": "0.21.2",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "v5",
+      "id": "CVE-2023-45857",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-45857"
+      },
+      "ratings": [
+        {
+          "score": 6.5,
+          "severity": "medium",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        352
+      ],
+      "description": "Axios 0.8.1 through 1.5.1 inadvertently reveals the confidential XSRF-TOKEN stored in cookies by including it in the HTTP header X-XSRF-TOKEN for every request made to any host.",
+      "recommendation": "Upgrade axios to 1.6.0 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/axios@0.21.1"
+        }
+      ]
+    },
+    {
+      "bom-ref": "v6",
+      "id": "CVE-2022-23540",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-23540"
+      },
+      "ratings": [
+        {
+          "score": 6.4,
+          "severity": "medium",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        287,
+        347
+      ],
+      "description": "In versions <=8.5.1 of jsonwebtoken, lack of algorithm definition in jwt.verify() can lead to signature validation bypass.",
+      "recommendation": "Upgrade jsonwebtoken to 9.0.0 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/jsonwebtoken@8.5.1",
+          "versions": [
+            {
+              "version": "9.0.0",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "v7",
+      "id": "CVE-2024-29041",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-29041"
+      },
+      "ratings": [
+        {
+          "score": 6.1,
+          "severity": "medium",
+          "method": "CVSSv31"
+        }
+      ],
+      "cwes": [
+        601
+      ],
+      "description": "Express.js open redirect in malformed URLs when using res.location() / res.redirect().",
+      "recommendation": "Upgrade express to 4.19.2 or later.",
+      "affects": [
+        {
+          "ref": "pkg:npm/express@4.17.1",
+          "versions": [
+            {
+              "version": "4.19.2",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "v8",
+      "id": "CVE-2021-44228",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+      },
+      "ratings": [
+        {
+          "score": 10.0,
+          "severity": "critical",
+          "method": "CVSSv31",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+        }
+      ],
+      "cwes": [
+        502,
+        400,
+        20
+      ],
+      "description": "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP and other JNDI related endpoints (Log4Shell).",
+      "recommendation": "Upgrade log4j-core to 2.17.1 or later.",
+      "affects": [
+        {
+          "ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+          "versions": [
+            {
+              "version": "2.17.1",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

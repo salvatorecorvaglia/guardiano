@@ -1,0 +1,42 @@
+[
+  {
+    "Description": "AWS Access Key",
+    "StartLine": 12,
+    "EndLine": 12,
+    "StartColumn": 15,
+    "EndColumn": 54,
+    "Match": "aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "File": "deploy/terraform/provider.tf",
+    "SymlinkFile": "",
+    "Commit": "9f2c1abf8d4e5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
+    "Entropy": 3.65,
+    "Author": "Dana Dev",
+    "Email": "dana@example.com",
+    "Date": "2026-08-14T10:22:31Z",
+    "Message": "wire up deploy",
+    "Tags": [],
+    "RuleID": "aws-access-token",
+    "Fingerprint": "deploy/terraform/provider.tf:aws-access-token:12"
+  },
+  {
+    "Description": "Generic API Key",
+    "StartLine": 4,
+    "EndLine": 4,
+    "StartColumn": 9,
+    "EndColumn": 48,
+    "Match": "api_key = 'sk_live_51H8xQeLkdIwJv7Xb'",
+    "Secret": "sk_live_51H8xQeLkdIwJv7Xb",
+    "File": "services/billing/config.py",
+    "SymlinkFile": "",
+    "Commit": "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+    "Entropy": 4.21,
+    "Author": "Dana Dev",
+    "Email": "dana@example.com",
+    "Date": "2026-09-02T16:05:10Z",
+    "Message": "billing config",
+    "Tags": [],
+    "RuleID": "generic-api-key",
+    "Fingerprint": "services/billing/config.py:generic-api-key:4"
+  }
+]

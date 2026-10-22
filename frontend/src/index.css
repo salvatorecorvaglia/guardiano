@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Design tokens. RGB triplets feed Tailwind (alpha-capable); hex vars feed charts. */
+:root {
+  color-scheme: light;
+  --page: 244 244 241;
+  --surface: 252 252 251;
+  --raised: 255 255 255;
+  --line: 225 224 217;
+  --ink: 11 11 11;
+  --ink2: 82 81 78;
+  --muted: 108 106 100;
+  --accent: 28 97 181;
+  --accent-ink: 255 255 255;
+  --good: 0 99 0;
+  --danger: 190 40 40;
+  --warn: 150 95 0;
+
+  /* Severity (validated: adjacent CVD/normal-vision separation on this surface) */
+  --sev-critical: #8f1d4a;
+  --sev-high: #dd4d2b;
+  --sev-medium: #eda100;
+  --sev-low: #2a78d6;
+  --sev-info: #898781;
+  /* Flow chart (new vs closed) */
+  --flow-new: #4a3aa7;
+  --flow-closed: #1baf7a;
+
+  --chart-surface: #fcfcfb;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-text: #76746e;
+}
+
+/* One dark palette: public/theme-init.js always sets data-theme, resolving "system" from the OS. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: 13 13 13;
+  --surface: 26 26 25;
+  --raised: 34 34 32;
+  --line: 50 50 47;
+  --ink: 255 255 255;
+  --ink2: 195 194 183;
+  --muted: 150 148 141;
+  --accent: 94 165 250;
+  --accent-ink: 11 11 11;
+  --good: 12 163 12;
+  --danger: 230 103 103;
+  --warn: 250 178 25;
+  --sev-critical: #ad215f;
+  --sev-high: #c4530f;
+  --sev-medium: #af930d;
+  --sev-low: #3987e5;
+  --sev-info: #898781;
+  --flow-new: #9085e9;
+  --flow-closed: #199e70;
+  --chart-surface: #1a1a19;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
+  --chart-text: #96948d;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-page text-ink antialiased;
+  font-size: 14px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-ink hover:bg-accent/90;
+  }
+  .btn-secondary {
+    @apply border border-line bg-raised text-ink hover:bg-page;
+  }
+  .btn-ghost {
+    @apply text-ink2 hover:bg-ink/5 hover:text-ink;
+  }
+  .btn-danger {
+    @apply border border-danger/40 bg-raised text-danger hover:bg-danger/10;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-ink2;
+  }
+  .th {
+    @apply whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted;
+  }
+  .td {
+    @apply px-3 py-2.5 align-middle;
+  }
+}
+
+/* Printing (the Reports page, or any page somebody prints). Colour is kept for the severity bars,
+   which is why print-color-adjust is set; everything interactive is hidden by `print:hidden`. */
+@media print {
+  html,
+  body,
+  #root {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  :root,
+  :root[data-theme="dark"] {
+    --ink: 11 11 11;
+    --ink2: 82 81 78;
+    --muted: 100 100 100;
+    --line: 210 210 210;
+    --page: 255 255 255;
+    --surface: 255 255 255;
+    --raised: 255 255 255;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

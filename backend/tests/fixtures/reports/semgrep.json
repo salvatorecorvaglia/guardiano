@@ -1,0 +1,72 @@
+{
+  "version": "1.85.0",
+  "results": [
+    {
+      "check_id": "python.django.security.injection.sql.sql-injection-using-raw.sql-injection-db-cursor-execute",
+      "path": "inventory/views.py",
+      "start": { "line": 88, "col": 9, "offset": 2911 },
+      "end": { "line": 88, "col": 74, "offset": 2976 },
+      "extra": {
+        "message": "User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection. Use parameterized queries instead.",
+        "severity": "ERROR",
+        "lines": "        cursor.execute(\"SELECT * FROM items WHERE sku = '%s'\" % sku)",
+        "metadata": {
+          "cwe": ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"],
+          "owasp": ["A03:2021 - Injection"],
+          "references": ["https://docs.djangoproject.com/en/stable/topics/security/#sql-injection-protection"],
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "check_id": "python.lang.security.deserialization.pickle.avoid-pickle",
+      "path": "inventory/cache.py",
+      "start": { "line": 31, "col": 16 },
+      "end": { "line": 31, "col": 40 },
+      "extra": {
+        "message": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities when deserializing untrusted data.",
+        "severity": "WARNING",
+        "lines": "        return pickle.loads(blob)",
+        "metadata": { "cwe": ["CWE-502: Deserialization of Untrusted Data"], "references": ["https://docs.python.org/3/library/pickle.html"] }
+      }
+    },
+    {
+      "check_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+      "path": "inventory/tasks/export.py",
+      "start": { "line": 54, "col": 5 },
+      "end": { "line": 54, "col": 62 },
+      "extra": {
+        "message": "Found 'subprocess' function 'run' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process.",
+        "severity": "ERROR",
+        "lines": "    subprocess.run(f\"tar czf {dest} {src}\", shell=True)",
+        "metadata": { "cwe": ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"] }
+      }
+    },
+    {
+      "check_id": "python.django.security.audit.csrf-exempt.no-csrf-exempt",
+      "path": "inventory/api.py",
+      "start": { "line": 12, "col": 1 },
+      "end": { "line": 12, "col": 13 },
+      "extra": {
+        "message": "Detected usage of @csrf_exempt, which indicates that there is no CSRF token set for this route.",
+        "severity": "WARNING",
+        "lines": "@csrf_exempt",
+        "metadata": { "cwe": ["CWE-352: Cross-Site Request Forgery (CSRF)"] }
+      }
+    },
+    {
+      "check_id": "python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-md5",
+      "path": "inventory/utils/hashing.py",
+      "start": { "line": 7, "col": 12 },
+      "end": { "line": 7, "col": 30 },
+      "extra": {
+        "message": "Detected MD5 hash algorithm which is considered insecure.",
+        "severity": "INFO",
+        "lines": "    return hashlib.md5(value).hexdigest()",
+        "metadata": { "cwe": ["CWE-327: Use of a Broken or Risky Cryptographic Algorithm"] }
+      }
+    }
+  ],
+  "errors": [],
+  "paths": { "scanned": ["inventory"] }
+}

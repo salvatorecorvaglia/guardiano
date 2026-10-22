@@ -1,0 +1,39 @@
+{
+  "seeded_findings": 100000,
+  "read_workload": "mixed",
+  "transport": "https-reverse-proxy",
+  "history_rows": 275000,
+  "upload_target": "same-populated-asset",
+  "read_routes": [
+    "/api/v1/findings",
+    "/api/v1/analytics/summary",
+    "/api/v1/analytics/trends",
+    "/api/v1/search"
+  ],
+  "upload_findings_each": 1000,
+  "concurrent_uploads": 2,
+  "read_p95_seconds": 1.8076759794494137,
+  "concurrent_read_p95_seconds": 1.5420667562508243,
+  "upload_seconds": [
+    1.3618178750002699,
+    0.9088691659999313
+  ],
+  "route_p95_seconds": {
+    "baseline": {
+      "/api/v1/findings": 0.34608222675142314,
+      "/api/v1/analytics/summary": 0.8325959018986395,
+      "/api/v1/analytics/trends": 1.8305014139488776,
+      "/api/v1/search": 0.39289924970198625
+    },
+    "concurrent": {
+      "/api/v1/findings": 0.29378092965234825,
+      "/api/v1/analytics/summary": 0.5441893405490191,
+      "/api/v1/analytics/trends": 1.6379390203486763,
+      "/api/v1/search": 0.09818432005231444
+    }
+  },
+  "process_max_rss": 210370560,
+  "rss_unit": "bytes",
+  "recorded_date": "2026-10-21",
+  "environment": "macOS arm64, local Docker PostgreSQL 16; analyzed seed tables; disposable test database"
+}

@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check tag matches backend and frontend versions
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import ast
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ['RELEASE_TAG']
+          if not re.fullmatch(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag):
+              raise SystemExit('Release tags must use vMAJOR.MINOR.PATCH, for example v1.0.0')
+          module = ast.parse(Path('backend/app/__init__.py').read_text())
+          backend = next(
+              ast.literal_eval(node.value)
+              for node in module.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets)
+          )
+          frontend = json.loads(Path('frontend/package.json').read_text())['version']
+          if backend != tag[1:] or frontend != tag[1:]:
+              raise SystemExit(f'{tag} does not match backend {backend} and frontend {frontend}')
+          PY
+
+  checks:
+    name: Release checks
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish GitHub release
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Extract release notes from changelog
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ['RELEASE_TAG'].removeprefix('v')
+          changelog = Path('CHANGELOG.md').read_text()
+          section = re.search(
+              rf'^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## |\Z)',
+              changelog,
+              re.MULTILINE | re.DOTALL,
+          )
+          if section is None or not section.group(1).strip():
+              raise SystemExit(f'CHANGELOG.md has no release notes for {version}')
+          Path(os.environ['RUNNER_TEMP'], 'release-notes.md').write_text(section.group(1).strip() + '\n')
+          PYTHON
+
+      - name: Create release with changelog notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists."
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "Guardiano $RELEASE_TAG"
+          fi

@@ -1,0 +1,22 @@
+# Compose 2.24.4+: docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+# Terminate HTTPS at a reverse proxy on this host; forward to 127.0.0.1:${HTTP_PORT:-8080}.
+services:
+  db:
+    ports: !reset []
+    restart: unless-stopped
+  backend:
+    environment:
+      ENV: production
+      SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY of at least 32 characters}
+      PUBLIC_URL: ${PUBLIC_URL:?Set the public HTTPS URL}
+    restart: unless-stopped
+  worker:
+    environment:
+      ENV: production
+      SECRET_KEY: ${SECRET_KEY:?Set a random SECRET_KEY of at least 32 characters}
+      PUBLIC_URL: ${PUBLIC_URL:?Set the public HTTPS URL}
+    restart: unless-stopped
+  frontend:
+    ports: !override
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    restart: unless-stopped

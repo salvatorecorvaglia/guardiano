@@ -1,0 +1,35 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-09-22T10:30:00Z",
+  "ArtifactName": ".",
+  "ArtifactType": "filesystem",
+  "Trivy": {"Version": "0.56.1"},
+  "Results": [
+    {
+      "Target": "Dockerfile",
+      "Class": "config",
+      "Type": "dockerfile",
+      "MisconfSummary": {"Successes": 20, "Failures": 1},
+      "Misconfigurations": [
+        {"Type": "Dockerfile Security Check", "ID": "DS002", "AVDID": "AVD-DS-0002", "Title": "Image user should not be 'root'", "Description": "Running containers with 'root' user can lead to a container escape situation.", "Message": "Specify at least 1 USER command in Dockerfile with non-root user as argument", "Namespace": "builtin.dockerfile.DS002", "Resolution": "Add 'USER <non root user name>' line to the Dockerfile", "Severity": "HIGH", "PrimaryURL": "https://avd.aquasec.com/misconfig/ds002", "References": ["https://docs.docker.com/develop/develop-images/dockerfile_best-practices/", "https://avd.aquasec.com/misconfig/ds002"], "Status": "FAIL", "CauseMetadata": {"Provider": "Dockerfile", "Service": "general", "Code": {"Lines": null}}}
+      ]
+    },
+    {
+      "Target": "infra/s3.tf",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {"Successes": 8, "Failures": 1},
+      "Misconfigurations": [
+        {"Type": "Terraform Security Check", "ID": "AVD-AWS-0086", "AVDID": "AVD-AWS-0086", "Title": "S3 Access block should block public ACL", "Description": "S3 buckets should block public ACLs on buckets and any objects they contain.", "Message": "No public access block so not blocking public acls", "Resolution": "Enable blocking any PUT calls with a public ACL specified", "Severity": "HIGH", "PrimaryURL": "https://avd.aquasec.com/misconfig/avd-aws-0086", "References": [], "Status": "FAIL", "CauseMetadata": {"Resource": "aws_s3_bucket.uploads", "Provider": "AWS", "Service": "s3", "StartLine": 1, "EndLine": 3}},
+        {"Type": "Terraform Security Check", "ID": "AVD-AWS-0088", "AVDID": "AVD-AWS-0088", "Title": "Unencrypted S3 bucket.", "Severity": "HIGH", "Status": "PASS", "CauseMetadata": {"Resource": "aws_s3_bucket.uploads", "StartLine": 1, "EndLine": 3}}
+      ]
+    },
+    {
+      "Target": "config/settings.py",
+      "Class": "secret",
+      "Secrets": [
+        {"RuleID": "aws-access-key-id", "Category": "AWS", "Severity": "CRITICAL", "Title": "AWS Access Key ID", "StartLine": 12, "EndLine": 12, "Code": {"Lines": [{"Number": 12, "Content": "AWS_KEY = \"****************\"", "IsCause": true}]}, "Match": "AWS_KEY = \"****************\""}
+      ]
+    }
+  ]
+}
