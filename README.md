@@ -1,118 +1,181 @@
-# Guardiano 💂‍♂️
+# Guardiano
 
 **Self-hosted application vulnerability management platform**
 
-**Guardiano** is a self-hosted application vulnerability management platform. It centralizes security scanner output into one searchable, triageable inventory.
+**Guardiano** is a self-hosted application vulnerability management platform. Import reports from your security scanners, bring findings into one inventory, and track triage, ownership, remediation, and accepted risk across applications and teams. It supports SAST, software composition analysis (SCA), infrastructure as code (IaC), and dynamic application security testing (DAST). Run your scanners separately, then upload their results through the web interface or API.
 
-## What it provides
+## Features
 
-- A searchable inventory of findings, assets, vulnerabilities, and software components
-- SAST, SCA, IaC, and DAST report ingestion with cross-scan deduplication
-- Finding ownership, comments, tags, due dates, severity overrides, and full history
-- Configurable remediation SLAs, triage rules, saved views, and quality gates
-- Preview scans for branches and pull requests without changing the main inventory
-- Risk acceptance workflows, including expiry and optional four-eyes approval
-- CISA KEV and EPSS enrichment, license policies, VEX, and SBOM export
-- Jira, GitHub, and GitLab issue tracking; webhooks, email notifications, and scheduled reports
-- Role-based access, teams, scoped API tokens, MFA, OIDC single sign-on, and audit logging
-- Dashboards, trend reports, CSV/JSON exports, and optional Prometheus metrics
-
-## Supported report formats
-
-Guardiano detects these formats automatically:
-
-| Category | Formats |
-| --- | --- |
-| Standard | SARIF 2.1.0, CycloneDX JSON |
-| SAST and secrets | Semgrep JSON, Gitleaks JSON, Guardiano JSON |
-| SCA | Trivy JSON, Grype JSON, OSV-Scanner JSON, OWASP Dependency-Check JSON, `npm audit` JSON |
-| IaC | Checkov JSON, KICS JSON, Trivy JSON |
-| DAST | OWASP ZAP JSON, Nuclei JSON or JSON Lines |
-
-SARIF also makes Guardiano compatible with scanners such as CodeQL and other tools that emit the
-standard format.
+- Centralized findings with deduplication, scan history, comparisons, and automatic reopening and resolution.
+- Assets, products, teams, and access roles: administrator, manager, analyst, and viewer.
+- Severity and risk prioritization, remediation SLAs, CISA KEV and EPSS enrichment.
+- Risk acceptance with expiry, optional approval requirements, and audit history.
+- Component inventory, license policies, SBOM and VEX support.
+- CI quality gates and branch previews that evaluate reports without changing the findings inventory.
+- Jira, GitHub, and GitLab issue integrations, outbound webhooks, and optional email notifications.
+- Local authentication, two-factor authentication, OpenID Connect SSO, and scoped API tokens.
 
 ## Quick start
 
-You need Docker with the Compose plugin. From the repository root, create `.env` only if it does not
-already exist:
+Install Docker with the Compose plugin, then run these commands from the repository root:
 
 ```bash
-test -f .env || cp .env.example .env
+cp .env.example .env
+docker compose up --build -d
 ```
 
-The values from `.env.example` are for local evaluation:
+If you already have a `.env` file, keep it and review any new settings in [.env.example](.env.example).
 
-```text
-admin@example.com
-ChangeMe-Admin-2026!
-```
+Open <http://localhost:8080>. On an empty database, Guardiano creates the first administrator using `GUARDIANO_ADMIN_EMAIL` and `GUARDIANO_ADMIN_PASSWORD`. The example file supplies `admin@example.com` / `ChangeMe-Admin-2026!` for local evaluation; replace these values before starting any shared installation.
 
-At startup, Guardiano applies versioned Alembic database upgrades, including the PostgreSQL
-`pg_trgm` extension. Existing unversioned 1.0 databases are adopted only after their schema is
-verified; drift causes an explicit refusal. Run `python -m app.cli init-db` manually to upgrade,
-and `python -m app.cli check-db` to check the revision. Read the
-[production upgrade and regression gates](docs/production-readiness.md) before upgrading an existing installation.
+| Service | Local address |
+| --- | --- |
+| Web interface | <http://localhost:8080> |
+| API | <http://localhost:8080/api/v1> |
+| Interactive API documentation | <http://localhost:8080/api/docs> |
+| PostgreSQL | `localhost:5432` (loopback only) |
 
-Before starting a deployment reachable by other people, set unique `GUARDIANO_ADMIN_PASSWORD`,
-`SECRET_KEY`, and `POSTGRES_PASSWORD` values in `.env`. Then start the stack:
+API documentation is disabled when `ENV=production`.
 
 ```bash
-docker compose up -d --build
+docker compose ps
+docker compose logs -f backend worker
+docker compose down
 ```
 
-Open <http://localhost:8080> and sign in with the administrator credentials in `.env`. On first
-startup, Guardiano creates the database schema and the initial administrator automatically.
+Database data persists in the `pgdata` volume when the stack is stopped. `docker compose down -v` deletes that volume and its data.
 
-To populate a local installation with sample users, assets, findings, and scan history:
+For optional demo data on a development installation:
 
 ```bash
 docker compose exec backend python -m app.cli seed-demo
 ```
 
-The seeded accounts are `admin@guardiano.local`, `manager@guardiano.local`,
-`analyst@guardiano.local`, and `viewer@guardiano.local`. Their development-only password is
-`Guardiano-Demo-2026!`.
+## Import scan results
 
-## Upload a scan
+Create or select an asset, upload a report, and review the resulting findings. Guardiano detects supported formats automatically; the API also accepts an explicit format identifier.
 
-Create an API token with the `ingest` scope under **Settings → Account & API tokens**, then upload a report:
+| Report | Format identifier |
+| --- | --- |
+| SARIF 2.1.0 | `sarif` |
+| CycloneDX JSON | `cyclonedx` |
+| Trivy JSON | `trivy` |
+| Semgrep JSON | `semgrep` |
+| Grype JSON | `grype` |
+| OSV-Scanner JSON | `osv` |
+| OWASP Dependency-Check JSON | `dependency-check` |
+| npm audit JSON | `npm-audit` |
+| Gitleaks JSON | `gitleaks` |
+| Checkov JSON | `checkov` |
+| KICS JSON | `kics` |
+| OWASP ZAP JSON | `zap` |
+| Nuclei JSON or JSON Lines | `nuclei` |
+| Guardiano JSON | `guardiano` |
+
+For automated uploads, create an API token with the `ingest` scope and export it as `GUARDIANO_TOKEN`:
 
 ```bash
-export GUARDIANO_URL=http://localhost:8080
-export GUARDIANO_TOKEN='your-token'
-
-curl --fail-with-body -X POST "$GUARDIANO_URL/api/v1/scans" \
-  -H "Authorization: Bearer $GUARDIANO_TOKEN" \
-  -F "file=@backend/tests/fixtures/reports/semgrep.sarif" \
-  -F "asset_name=my-service" \
-  -F "branch=main" \
-  -F "close_missing=true"
+curl --fail-with-body http://localhost:8080/api/v1/scans \
+  -H "Authorization: Bearer ${GUARDIANO_TOKEN}" \
+  -F 'asset_name=my-service' \
+  -F 'file=@report.sarif'
 ```
 
-The file in this example is a bundled test fixture. Replace it with a report produced by your scanner.
-You can also send `commit_sha` when you have a Git commit to associate with the scan.
+The asset is created if it does not exist and the caller has access to create it. Optional form fields include `format`, `scan_type`, `branch`, `commit_sha`, `preview`, and `close_missing`.
 
-`asset_name` creates the asset when it does not exist. `close_missing=true` resolves active findings
-from the same scanner that disappeared from a complete default-branch scan. If an asset has a default
-branch and the uploaded `branch` differs, Guardiano treats the upload as a preview: its quality gate
-is evaluated, but the inventory is unchanged.
+- Use `preview=true` to evaluate a report and its quality gate without updating the findings inventory. A branch different from an asset's configured default branch also implies preview mode.
+- Use `close_missing=true` for complete default-branch reports to resolve findings from the same tool that are no longer reported. Empty reports do not close findings unless `allow_empty=true` is also supplied.
+- A successful upload returns HTTP 201. Check the response's `gate.passed` value separately to enforce a quality gate in CI; `gate` is null when no policy applies.
 
-In development, interactive API documentation is available at
-<http://localhost:8080/api/docs>.
+Ready-made CI integrations are available in [integrations/github-action](integrations/github-action/action.yml) and [integrations/gitlab](integrations/gitlab/guardiano.gitlab-ci.yml).
+
+## Configuration
+
+[.env.example](.env.example) documents the available settings and defaults. The API and background worker share configuration.
+
+| Settings | Purpose |
+| --- | --- |
+| `SECRET_KEY`, `INTEGRATIONS_KEY` | Session signing and encryption of stored integration credentials and MFA secrets |
+| `GUARDIANO_ADMIN_EMAIL`, `GUARDIANO_ADMIN_PASSWORD` | First administrator bootstrap; only used when no users exist |
+| `POSTGRES_*`, `DATABASE_URL` | Database connection; an explicit URL overrides the structured fields |
+| `HTTP_PORT`, `PUBLIC_URL`, `REAL_IP_FROM` | Published port, public notification links, and trusted proxy CIDR |
+| `MAX_UPLOAD_MB`, `MAX_REPORT_FINDINGS`, `MAX_CONCURRENT_INGESTS` | Report size, finding count, and ingestion concurrency limits |
+| `SLA_*`, `RISK_ACCEPTANCE_*` | Remediation deadlines and risk acceptance policy |
+| `OIDC_*`, `LOCAL_LOGIN`, `MFA_*` | SSO and local authentication policy |
+| `SMTP_*` | Optional email delivery; email features remain hidden without `SMTP_HOST` |
+| `INTEL_SYNC_ENABLED`, `OSV_API_URL` | Exploitability feed synchronization and advisory lookups |
+| `OUTBOUND_ALLOW_HOSTS` | Explicitly permitted internal destinations for outbound integrations |
+| `RETENTION_*`, `METRICS_*` | Record retention and optional Prometheus metrics |
+
+Keep `INTEGRATIONS_KEY` persistent and independent of `SECRET_KEY`. Without it, encryption derives from `SECRET_KEY`, so rotating the signing key also makes stored credentials and MFA secrets unreadable. Back up configuration secrets separately from the database.
+
+For disconnected installations, disable feed synchronization and advisory lookups as needed. The CLI supports importing KEV and EPSS files downloaded elsewhere:
+
+```bash
+docker compose exec backend python -m app.cli --help
+```
+
+## Production
+
+The production override requires Docker Compose 2.24.4 or later. It removes the published database port, binds the web service to loopback, and adds restart policies and bounded logs. Terminate HTTPS at a reverse proxy; an example is provided in [ops/Caddyfile](ops/Caddyfile).
+
+The operations helper requires Python 3 and Docker; encrypted backups also use OpenSSL.
+
+```bash
+python3 scripts/production.py --env-file .env.production init-env
+```
+
+This creates a protected configuration file with generated secrets, administrator MFA enforcement, and metrics enabled. Before deployment, edit it to set:
+
+- `PUBLIC_URL` to the public HTTPS URL and `GUARDIANO_ADMIN_EMAIL` to the administrator's address.
+- `REAL_IP_FROM` to the trusted proxy CIDR.
+- `POSTGRES_IMAGE`, `BACKEND_IMAGE`, and `FRONTEND_IMAGE` to tested image references pinned with `@sha256:…`.
+
+Then validate and deploy:
+
+```bash
+python3 scripts/production.py --env-file .env.production preflight
+python3 scripts/production.py --env-file .env.production deploy
+```
+
+The backend applies database migrations before serving traffic. Back up before upgrades. See [scripts/production.py](scripts/production.py) for deployment, encrypted backup, restore verification, and smoke-check commands; run it with `--help` for usage. [scripts/backup.sh](scripts/backup.sh) adds off-host backup upload through rclone. Example systemd units and monitoring configuration live under [ops](ops).
+
+Prometheus metrics are optional and served at `/metrics` on the backend. The bundled frontend proxy does not expose that endpoint.
 
 ## Development
 
-Start the local stack:
+The stack uses React 19, TypeScript, and Vite for the frontend; FastAPI, SQLAlchemy, and Alembic for the backend; and PostgreSQL 16 for persistence. A separate worker handles queued jobs and periodic tasks.
+
+The Docker quick start works without installing language dependencies locally. Containers do not mount application source, so rebuild after source changes.
+
+For local tooling, use Python 3.12 or later, Node.js 24, and the pnpm version declared in [frontend/package.json](frontend/package.json).
+
+### Backend
 
 ```bash
-docker compose up --build
+docker compose up -d db
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements-dev.lock
+export DATABASE_URL=postgresql+psycopg://guardiano:guardiano@localhost:5432/guardiano
+python -m app.cli init-db
+python -m app.cli create-admin admin@example.com
+uvicorn app.main:app --reload --port 8000
 ```
 
-The UI is served at <http://localhost:8080>, with the API under `/api` and API docs at
-<http://localhost:8080/api/docs>. Rebuild the containers after changing the source code.
+For asynchronous features, run `python -m app.cli worker` in another terminal with the same environment. The root `.env` used by Compose is not automatically exported into your shell.
 
-Run the backend tests against PostgreSQL:
+From `backend`, with the virtual environment active:
+
+```bash
+ruff check .
+pytest --cov=app --cov-report=term-missing
+```
+
+Tests use a separate PostgreSQL database named `guardiano_test` by default and reset its schema. Set `TEST_DATABASE_URL` to select another dedicated test database. The database role must be able to create it if it does not already exist.
+
+Alternatively, run backend tests in Docker from the repository root:
 
 ```bash
 docker compose up -d db
@@ -120,54 +183,41 @@ docker compose build --build-arg INSTALL_DEV=true backend
 docker compose run --rm --no-deps -v "$PWD/backend/tests:/app/tests:ro" backend test
 ```
 
-Run the frontend checks with Node.js 24 and pnpm:
+### Frontend
 
 ```bash
-(
-  cd frontend
-  pnpm install
-  pnpm lint
-  pnpm typecheck
-  pnpm test        # frontend unit tests
-  pnpm build       # production frontend build
-)
+cd frontend
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Generate both hashed Python dependency exports from the same resolution:
+Vite proxies `/api` to `http://localhost:8000`; set `VITE_API_PROXY` to change the target.
 
 ```bash
-cd backend
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Browser and accessibility tests use Playwright via `pnpm test:browser`. See the [CI workflow](.github/workflows/ci.yml) for the PostgreSQL, Python environment, and Chromium setup.
+
+### Dependency and API contracts
+
+After changing Python dependencies, run these commands from `backend` using uv:
+
+```bash
 uv lock
-uv export --no-dev --no-emit-project --format requirements-txt -o requirements.lock
-uv export --extra dev --no-emit-project --format requirements-txt -o requirements-dev.lock
-python check_contracts.py
+uv export --locked --no-emit-project --no-dev --output-file requirements.lock
+uv export --locked --no-emit-project --extra dev --output-file requirements-dev.lock
 ```
 
-When the API schema changes, regenerate the checked-in OpenAPI document and TypeScript definitions:
+Commit all three lock files. For frontend dependency changes, commit `frontend/pnpm-lock.yaml`.
+
+After changing the API schema, regenerate the OpenAPI document and TypeScript definitions from the repository root:
 
 ```bash
+docker compose build backend
 docker compose run --rm --no-deps --entrypoint python backend -m app.cli openapi - > frontend/src/api/openapi.json
 (cd frontend && pnpm gen:api)
 ```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## 📜 Changelog
-
-Detailed release history and version changes can be found in [CHANGELOG.md](CHANGELOG.md).
-
-## 🔐 Security
-
-If you discover a security vulnerability, please see our [Security Policy](SECURITY.md).
-
-## 📝 License
-
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
-
----
-
-**Author**: [Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
