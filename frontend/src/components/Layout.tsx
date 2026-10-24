@@ -57,6 +57,14 @@ export default function Layout() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: Close the drawer after route navigation.
   useEffect(() => setMenuOpen(false), [location.pathname]);
   useEffect(() => {
+    if (!window.matchMedia) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setMenuOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    closeOnDesktop();
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
+  useEffect(() => {
     if (!menuOpen) return;
     const previous = document.activeElement as HTMLElement | null;
     const content = contentRef.current;

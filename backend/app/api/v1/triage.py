@@ -201,7 +201,9 @@ def preview(
     """
     match = body.match.model_dump(exclude_defaults=True, exclude_none=True, mode="json")
     filters = triage.prefilter(match, body.asset_id, scope)
-    candidates = db.scalars(findings_query(filters, "-first_seen").limit(PREVIEW_SCAN_LIMIT)).unique().all()
+    candidates = (
+        db.scalars(findings_query(filters, "-first_seen", db).limit(PREVIEW_SCAN_LIMIT)).unique().all()
+    )
     matched = [f for f in candidates if triage.matches(match, f)]
     return TriagePreviewOut(
         scanned=len(candidates),

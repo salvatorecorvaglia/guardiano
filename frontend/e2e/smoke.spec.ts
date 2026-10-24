@@ -23,6 +23,11 @@ for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole("heading", { name: "Security posture", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Navigation" })).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.getByRole("dialog", { name: "Navigation" })).not.toBeVisible();
+    await expect.poll(() => page.locator("main").evaluate((el) => el.closest("[inert]") === null)).toBe(true);
   });
 }
 

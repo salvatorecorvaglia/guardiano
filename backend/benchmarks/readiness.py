@@ -25,6 +25,7 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 import httpx  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from pool_probe import PoolProbe  # noqa: E402
 from sqlalchemy import create_engine, insert, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 
@@ -131,7 +132,9 @@ def main() -> None:
     transport = "https-reverse-proxy" if base_url else "in-process"
     verify = ssl.create_default_context(cafile=os.environ.get("BENCHMARK_CA_FILE"))
     http = httpx.Client(base_url=base_url, verify=verify, timeout=120) if base_url else TestClient(app)
-    with http as client:
+    from app.core.db import engine
+
+    with PoolProbe(engine.pool) as pool_probe, http as client:
         login = client.post(
             "/api/v1/auth/login", json={"email": user.email, "password": "Benchmark-Password-2026!"}
         )
@@ -188,9 +191,11 @@ def main() -> None:
         with ThreadPoolExecutor(max_workers=6) as pool:
             list(pool.map(read, range(12)))  # warm caches before measuring
             phase = "baseline"
+            pool_probe.phase = phase
             baseline = list(pool.map(read, range(40)))
-            uploads = [pool.submit(upload, i) for i in range(2)]
             phase = "concurrent"
+            pool_probe.phase = phase
+            uploads = [pool.submit(upload, i) for i in range(2)]
             concurrent = list(pool.map(read, range(40)))
             upload_seconds = [future.result() for future in uploads]
 
@@ -211,6 +216,7 @@ def main() -> None:
         "read_routes": routes,
         "upload_findings_each": 1000,
         "concurrent_uploads": 2,
+        "pool_queue_wait": pool_probe.summary(),
         "read_p95_seconds": p95(baseline),
         "concurrent_read_p95_seconds": p95(concurrent),
         "upload_seconds": upload_seconds,

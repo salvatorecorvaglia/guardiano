@@ -124,3 +124,6 @@ def test_guardiano_native_validation():
 )
 def test_normalize_path(raw, expected):
     assert normalize_path(raw) == expected
+
+
+pytestmark = pytest.mark.no_database

@@ -1,5 +1,6 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GatePolicy, User } from "../api/types";
 import { ANALYST, renderPage, serveApi } from "../test/harness";
@@ -23,7 +24,26 @@ function policy(conditions: Partial<GatePolicy["conditions"]>): GatePolicy {
   } as GatePolicy;
 }
 
+function Assets() {
+  const [id, setId] = useState(1);
+  return <><button onClick={() => setId(2)}>Go to B</button><GatePolicyCard assetId={id} /></>;
+}
+
 describe("GatePolicyCard", () => {
+  it("discards another asset's draft when the target changes with cached policies", async () => {
+    const a = { ...policy({ max_new: { high: 10 } }), asset: { id: 1, name: "A" } };
+    const b = { ...policy({ max_new: { high: 20 } }), asset: { id: 2, name: "B" } };
+    serveApi({ "/gate-policies": [a, b] }, ADMIN);
+    renderPage(<Assets />);
+    const high = await screen.findByRole("spinbutton", { name: "New findings: High" });
+    await waitFor(() => expect((high as HTMLInputElement).value).toBe("10"));
+    await userEvent.clear(high);
+    await userEvent.type(high, "7");
+    await userEvent.click(screen.getByRole("button", { name: "Go to B" }));
+    expect((screen.getByRole("spinbutton", { name: "New findings: High" }) as HTMLInputElement).value).toBe("20");
+    expect((screen.getByRole("button", { name: "Save gate" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("keeps every condition it loaded when saving, EPSS as a fraction", async () => {
     // Saving sends the whole policy, so a condition the form did not know about would be erased.
     const calls = serveApi(

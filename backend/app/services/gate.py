@@ -56,7 +56,7 @@ class Projection:
         counts: Counter[str] = Counter()
         overdue = 0
         cves: set[str] = set()
-        policy, now = sla.get_policy(), utcnow()
+        policy, now = sla.get_policy(db), utcnow()
 
         def include(f):
             nonlocal overdue
@@ -192,7 +192,7 @@ def evaluate(
                 db.scalar(
                     select(func.count())
                     .select_from(Finding)
-                    .where(Finding.asset_id == asset.id, overdue_expr())
+                    .where(Finding.asset_id == asset.id, overdue_expr(db=db))
                 )
                 or 0
             )

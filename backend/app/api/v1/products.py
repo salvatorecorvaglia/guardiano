@@ -62,6 +62,7 @@ def _load(db: Session, product_id: int) -> Product:
 
 def _ensure_unique(db: Session, name: str, product_id: int | None = None) -> None:
     """One product per name, whatever its case: "Checkout" and "checkout" would only confuse."""
+    db.execute(select(func.pg_advisory_xact_lock(0x6770, func.hashtext(name.lower()))))
     same = select(Product.id).where(func.lower(Product.name) == name.lower(), Product.id != product_id)
     clash = db.scalar(same)
     if clash is not None:
@@ -83,7 +84,11 @@ def create_product(
     _ensure_unique(db, body.name.strip())
     product = Product(name=body.name.strip(), description=body.description)
     db.add(product)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "A product with that name already exists")
     audit.record(db, "product.create", actor=user, request=request, target_type="product",
                  target_id=product.id, target_label=product.name)  # fmt: skip
     _commit(db)

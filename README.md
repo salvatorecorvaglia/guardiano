@@ -173,6 +173,12 @@ ruff check .
 pytest --cov=app --cov-report=term-missing
 ```
 
+Pure parser and deduplication checks can also run without PostgreSQL:
+
+```bash
+pytest -m no_database
+```
+
 Tests use a separate PostgreSQL database named `guardiano_test` by default and reset its schema. Set `TEST_DATABASE_URL` to select another dedicated test database. The database role must be able to create it if it does not already exist.
 
 Alternatively, run backend tests in Docker from the repository root:

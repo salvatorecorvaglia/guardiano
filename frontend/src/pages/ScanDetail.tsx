@@ -162,6 +162,11 @@ function PreviewDetail({ scan }: { scan: Scan }) {
 
 export default function ScanDetail() {
   const { id } = useParams();
+  return <ScanDetailPage key={id} />;
+}
+
+function ScanDetailPage() {
+  const { id } = useParams();
   const [tab, setTab] = useState<Tab>("new");
   const scanQuery = useQuery({ queryKey: ["scan", id], queryFn: ({ signal }) => request("get", "/api/v1/scans/{scan_id}", { params: { scan_id: Number(id) }, signal }) });
   const isPreview = scanQuery.data?.source === "preview";

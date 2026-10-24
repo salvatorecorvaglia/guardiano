@@ -35,3 +35,6 @@ GOLDEN = {
 @pytest.mark.parametrize("expected", list(GOLDEN))
 def test_existing_keys_are_unchanged(expected):
     assert dedup_key(7, GOLDEN[expected]) == expected
+
+
+pytestmark = pytest.mark.no_database

@@ -240,6 +240,7 @@ def prefilter(match: dict[str, Any], asset_id: int | None, scope: Scope) -> Find
         type=match.get("type"),
         severity=match.get("severity", []),
         tool=match.get("tool"),
+        tool_case_insensitive=True,
         cwe=match.get("cwe"),
         package=match.get("package"),
         cve=match.get("cve"),
@@ -263,7 +264,7 @@ def apply_to_existing(
     match = rule.match or {}
     filters = prefilter(match, rule.asset_id, scope)
     filters.status = [s.value for s in ACTIVE_STATUSES]
-    ids = list(db.scalars(findings_query(filters, "first_seen").with_only_columns(Finding.id)))
+    ids = list(db.scalars(findings_query(filters, "first_seen", db).with_only_columns(Finding.id)))
     applied = 0
     for i in range(0, len(ids), _APPLY_CHUNK):
         if actor_id is not None:
@@ -283,7 +284,7 @@ def apply_to_existing(
                 filters.scope = Scope(tuple(sorted(set(scope.team_ids) & set(current_scope.team_ids))))
         chunk = ids[i : i + _APPLY_CHUNK]
         rows = (
-            findings_query(filters, "first_seen")
+            findings_query(filters, "first_seen", db)
             .where(Finding.id.in_(chunk))
             .order_by(None)
             .order_by(Finding.id)

@@ -42,3 +42,6 @@ def test_off_by_default_so_existing_keys_do_not_move(monkeypatch):
     before = sca_key(1, _sca("npm"))
     monkeypatch.setattr(settings, "dedup_canonical_ecosystems", True)
     assert sca_key(1, _sca("npm")) == before
+
+
+pytestmark = pytest.mark.no_database

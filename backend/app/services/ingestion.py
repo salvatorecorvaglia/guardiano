@@ -3,8 +3,10 @@
 import hashlib
 import logging
 import time
+from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import String, any_, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -19,6 +21,7 @@ from app.services.scan_persistence import persist_scan
 from app.services.scan_preview import preview_scan
 from app.services.scan_report import (
     _SCAN_LIMITS,
+    PreparedReport,
     _clean,
     prepare_report,
 )
@@ -43,6 +46,41 @@ log = logging.getLogger(__name__)
 _CHUNK = 1000
 _LOCK_NAMESPACE = 0x6764
 _NAME_LOCK_NAMESPACE = 0x6765
+
+
+def lock_report_findings(
+    db: Session, asset_id: int, prepared: PreparedReport, opts: IngestOptions, now: datetime
+) -> None:
+    """Lock only possible mutations, once and in the same ID order as bulk triage.
+
+    Resolution candidates deliberately include closed findings: a concurrent triager
+    might reopen them before resolution. Tool, type, identity and first-seen are stable
+    under triage; the per-asset advisory lock serializes changes to them by other scans.
+    Arrays keep maximum-size reports below PostgreSQL's bind-parameter limit.
+    """
+    conditions = []
+    if keys := list(prepared.findings.by_key):
+        conditions.append(Finding.dedup_key == any_(cast(keys, ARRAY(String(64)))))
+    if settings.dedup_fingerprints:
+        fingerprints = sorted({f.fingerprint for f in prepared.findings.by_key.values() if f.fingerprint})
+        if fingerprints:
+            conditions.append(Finding.fingerprint == any_(cast(fingerprints, ARRAY(String(200)))))
+    if opts.close_missing and (keys or opts.allow_empty):
+        conditions.append(
+            Finding.type.in_({prepared.scan_type, *prepared.report.covered_types})
+            & Finding.tools.overlap(sorted(prepared.findings.tools))
+            & (Finding.first_seen_at <= now)
+        )
+    if conditions:
+        # Consume IDs as a stream: the lock belongs to the transaction, not to this result list.
+        for _ in db.execute(
+            select(Finding.id)
+            .where(Finding.asset_id == asset_id, or_(*conditions))
+            .order_by(Finding.id)
+            .with_for_update(of=Finding)
+            .execution_options(yield_per=1000)
+        ):
+            pass
 
 
 def get_or_create_asset(db: Session, name: str, scope: Scope) -> Asset:
@@ -107,6 +145,7 @@ def match_by_fingerprint(
                     Finding.asset_id == asset.id,
                     Finding.fingerprint.in_(fingerprints[start : start + _CHUNK]),
                 )
+                .execution_options(populate_existing=True)
                 .order_by(Finding.id)
             )
         )
@@ -174,12 +213,7 @@ def _ingest_report(db: Session, raw: bytes, asset: Asset, user: User | None, opt
 
     # Lock in ID order, shared with bulk triage, before reading mutable finding state.
     if not preview:
-        db.execute(
-            select(Finding.id)
-            .where(Finding.asset_id == asset.id)
-            .order_by(Finding.id)
-            .with_for_update(of=Finding)
-        ).all()
+        lock_report_findings(db, asset.id, prepared, opts, now)
 
     # 2. Load existing findings for these keys.
     existing: dict[str, Finding] = {}

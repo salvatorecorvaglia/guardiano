@@ -1,0 +1,8 @@
+#!/bin/sh
+# Multipart boundaries and metadata are outside the report's byte limit.
+MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-50}
+case "$MAX_UPLOAD_MB" in
+    ''|*[!0-9]*) echo "MAX_UPLOAD_MB must be an integer" >&2; return 1 ;;
+esac
+MAX_REQUEST_MB=$(awk -v limit="$MAX_UPLOAD_MB" 'BEGIN {printf "%.0f", limit + 1}')
+export MAX_REQUEST_MB

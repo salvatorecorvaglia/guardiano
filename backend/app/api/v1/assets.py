@@ -36,6 +36,8 @@ _AUDITED = (
     "tags",
     "default_assignee_id",
     "default_branch",
+    "product_id",
+    "environment",
 )
 
 

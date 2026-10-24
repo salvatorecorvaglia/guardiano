@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -51,6 +51,17 @@ def available(db: Session, asset_id: int) -> list[Integration]:
 
 def create_ticket(db: Session, finding: Finding, integration: Integration, actor: User | None) -> FindingLink:
     """Open a ticket and link it. Raises TrackerError, which the endpoint turns into a 502."""
+    destination = (integration.base_url, integration.project, integration.asset_id)
+    integration = db.get(Integration, integration.id, with_for_update=True, populate_existing=True)
+    if (
+        integration is None
+        or not integration.enabled
+        or destination != (integration.base_url, integration.project, integration.asset_id)
+        or (integration.asset_id is not None and integration.asset_id != finding.asset_id)
+    ):
+        raise TrackerError(
+            "Tracker configuration changed; choose the tracker again", definitely_not_created=True
+        )
     key = (finding.id, integration.id)
     existing = db.scalar(
         select(FindingLink).where(
@@ -279,39 +290,35 @@ def poll(db: Session, now: datetime | None = None) -> dict[str, int]:
 AUTO_JOB = "tracker.create"
 
 
-def wants_ticket(integration: Integration, finding: Finding, exploited: set[str]) -> bool:
-    if finding.status not in {s.value for s in ACTIVE_STATUSES}:
-        return False  # a rule already suppressed it
-    floor = integration.auto_ticket_min_severity
-    if floor and SEVERITY_RANK.get(finding.severity, 0) >= SEVERITY_RANK.get(floor, 99):
-        return True
-    return bool(integration.auto_ticket_kev and finding.cve_id in exploited)
+def queue_auto_tickets(db: Session, asset_id: int, scan_id: int) -> int:
+    """Queue bounded work from this scan's persisted new findings, without retaining ORM objects.
 
-
-def queue_auto_tickets(db: Session, asset_id: int, created: list[Finding]) -> int:
-    """Queue a ticket for each new finding a tracker asks for, at most AUTO_TICKET_PER_SCAN in all.
-
-    Queued, not opened here: an upload must not wait on a tracker, or fail because one is down.
-    The caller commits.
+    The per-tracker order and shared scan budget match report insertion order (finding ID).
+    Candidate selection and KEV matching stay in SQL even for maximum-size reports.
     """
     trackers = [i for i in available(db, asset_id) if i.auto_ticket_min_severity or i.auto_ticket_kev]
-    if not trackers or not created:
-        return 0
-    cves = sorted({f.cve_id for f in created if f.cve_id})
-    exploited: set[str] = set()
-    if cves and any(i.auto_ticket_kev for i in trackers):
-        kev = select(VulnIntel.cve_id).where(VulnIntel.cve_id.in_(cves), VulnIntel.in_kev.is_(True))
-        exploited = set(db.scalars(kev))
     queued = skipped = 0
     for integration in trackers:
-        for f in created:
-            if not wants_ticket(integration, f, exploited):
-                continue
-            if queued >= settings.auto_ticket_per_scan:
-                skipped += 1
-                continue
-            jobs.enqueue(db, AUTO_JOB, {"finding_id": f.id, "integration_id": integration.id})
-            queued += 1
+        conditions = []
+        if floor := integration.auto_ticket_min_severity:
+            conditions.append(
+                case(SEVERITY_RANK, value=Finding.severity, else_=0) >= SEVERITY_RANK.get(floor, 99)
+            )
+        if integration.auto_ticket_kev:
+            conditions.append(Finding.cve_id.in_(select(VulnIntel.cve_id).where(VulnIntel.in_kev.is_(True))))
+        candidates = select(Finding.id).where(
+            Finding.asset_id == asset_id,
+            Finding.first_scan_id == scan_id,
+            Finding.status.in_([s.value for s in ACTIVE_STATUSES]),
+            or_(*conditions),
+        )
+        total = db.scalar(select(func.count()).select_from(candidates.subquery())) or 0
+        remaining = max(0, settings.auto_ticket_per_scan - queued)
+        ids = list(db.scalars(candidates.order_by(Finding.id).limit(remaining))) if remaining else []
+        for finding_id in ids:
+            jobs.enqueue(db, AUTO_JOB, {"finding_id": finding_id, "integration_id": integration.id})
+        queued += len(ids)
+        skipped += total - len(ids)
     if skipped:
         log.warning("asset %s: %d automatic ticket(s) not opened (AUTO_TICKET_PER_SCAN)", asset_id, skipped)
     return queued
@@ -322,6 +329,8 @@ def open_auto_ticket(db: Session, finding_id: int, integration_id: int) -> Findi
     finding = db.get(Finding, finding_id)
     integration = db.get(Integration, integration_id)
     if finding is None or integration is None or not integration.enabled:
+        return None
+    if integration.asset_id is not None and integration.asset_id != finding.asset_id:
         return None
     if finding.status not in {s.value for s in ACTIVE_STATUSES}:
         return None

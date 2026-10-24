@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.db import get_db
@@ -56,7 +56,12 @@ def upsert_policy(
     if body.asset_id is not None and not scope.owns(db.get(Asset, body.asset_id)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
 
-    policy = db.scalar(select(GatePolicy).where(GatePolicy.asset_id.is_not_distinct_from(body.asset_id)))
+    db.execute(select(func.pg_advisory_xact_lock(0x6767, body.asset_id or 0)))
+    policy = db.scalar(
+        select(GatePolicy)
+        .where(GatePolicy.asset_id.is_not_distinct_from(body.asset_id))
+        .execution_options(populate_existing=True)
+    )
     before = {"enabled": policy.enabled, "conditions": policy.conditions} if policy else None
     if policy is None:
         policy = GatePolicy(asset_id=body.asset_id)

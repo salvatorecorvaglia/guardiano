@@ -182,13 +182,11 @@ export default function Settings() {
   -F "commit_sha=$CI_COMMIT_SHA" \\
   -F "close_missing=true"`;
   const gha = `- name: Upload SAST results to Guardiano
-  if: always()
-  run: |
-    curl -fsS -X POST "\${{ vars.GUARDIANO_URL }}/api/v1/scans" \\
-      -H "Authorization: Bearer \${{ secrets.GUARDIANO_TOKEN }}" \\
-      -F "file=@semgrep.sarif" \\
-      -F "asset_name=\${{ github.event.repository.name }}" \\
-      -F "branch=\${{ github.ref_name }}" -F "commit_sha=\${{ github.sha }}"`;
+  uses: YOUR_ORG/guardiano/integrations/github-action@PINNED_COMMIT_SHA
+  with:
+    url: \${{ vars.GUARDIANO_URL }}
+    token: \${{ secrets.GUARDIANO_TOKEN }}
+    file: semgrep.sarif`;
 
   function toggleScope(s: ApiToken["scopes"][number]) {
     setScopes(scopes.includes(s) ? scopes.filter((x) => x !== s) : [...scopes, s]);
@@ -292,7 +290,7 @@ export default function Settings() {
             disappeared from full scans.
           </p>
           <Snippet code={curl} />
-          <p className="text-xs text-muted">GitHub Actions step:</p>
+          <p className="text-xs text-muted">GitHub Actions: replace YOUR_ORG and PINNED_COMMIT_SHA with your Guardiano repository and a reviewed commit. The action forces pull-request scans into preview mode and checks the quality gate.</p>
           <Snippet code={gha} />
           {meta.data?.docs_enabled && <p className="text-xs text-muted">
             Full API reference:{" "}

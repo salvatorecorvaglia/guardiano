@@ -19,6 +19,11 @@ import { fmtNum } from "../lib/format";
 
 export default function AssetDetail() {
   const { id } = useParams();
+  return <AssetDetailPage key={id} />;
+}
+
+function AssetDetailPage() {
+  const { id } = useParams();
   const directory = useDirectory();
   const teams = useQuery({ queryKey: ["teams"], queryFn: ({ signal }) => request("get", "/api/v1/teams", { signal }), staleTime: 5 * 60_000 });
   const { can } = useAuth();

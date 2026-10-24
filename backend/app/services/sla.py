@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from sqlalchemy import and_, case, func, literal, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.config import settings
@@ -65,16 +65,20 @@ _lock = threading.Lock()
 _cached: tuple[float, EffectivePolicy] | None = None
 
 
-def get_policy() -> EffectivePolicy:
+def get_policy(db: Session | None = None) -> EffectivePolicy:
     global _cached
     with _lock:
         if _cached is not None and time.monotonic() - _cached[0] < _TTL:
             return _cached[1]
-    with SessionLocal() as db:
-        policy = load_policy(db)
-    with _lock:
+        # Single flight, using the caller's connection when it already holds one.
+        # Opening a second connection per cache miss can exhaust the request pool.
+        if db is not None:
+            policy = load_policy(db)
+        else:
+            with SessionLocal() as session:
+                policy = load_policy(session)
         _cached = (time.monotonic(), policy)
-    return policy
+        return policy
 
 
 def invalidate() -> None:
@@ -83,9 +87,9 @@ def invalidate() -> None:
         _cached = None
 
 
-def sla_days_expr(policy: EffectivePolicy | None = None) -> ColumnElement:
+def sla_days_expr(policy: EffectivePolicy | None = None, db: Session | None = None) -> ColumnElement:
     """SLA length in days for each finding row, NULL for severities without an SLA."""
-    p = policy or get_policy()
+    p = policy or get_policy(db)
     whens = []
     if p.by_criticality:
         criticality = (
@@ -100,8 +104,8 @@ def sla_days_expr(policy: EffectivePolicy | None = None) -> ColumnElement:
     return case(*whens, else_=literal(None))
 
 
-def sla_due_expr(policy: EffectivePolicy | None = None) -> ColumnElement:
-    computed = Finding.first_seen_at + func.make_interval(0, 0, 0, sla_days_expr(policy))
+def sla_due_expr(policy: EffectivePolicy | None = None, db: Session | None = None) -> ColumnElement:
+    computed = Finding.first_seen_at + func.make_interval(0, 0, 0, sla_days_expr(policy, db))
     return func.coalesce(Finding.due_at_override, computed)
 
 
@@ -109,7 +113,7 @@ def due_at(f: Finding, policy: EffectivePolicy | None = None) -> datetime | None
     """Python twin of ``sla_due_expr`` for serialisation; must agree with it (tests/test_sla.py)."""
     if f.due_at_override is not None:
         return f.due_at_override
-    p = policy or get_policy()
+    p = policy or get_policy(object_session(f))
     # Only touch the asset relationship when it matters, so serialising stays free of extra loads.
     days = p.days_for(f.severity, f.asset.criticality if p.by_criticality else None)
     return f.first_seen_at + timedelta(days=days) if days is not None else None

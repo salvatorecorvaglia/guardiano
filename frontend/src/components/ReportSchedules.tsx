@@ -91,7 +91,7 @@ export default function ReportSchedules() {
                   {s.last_sent_at && ` · last sent ${fmtDateTime(s.last_sent_at)}`}
                 </div>
               </div>
-              <button className="btn-ghost p-1.5" aria-label={`Send ${s.name} now`} title="Send now" disabled={!meta.data?.email_enabled || sendNow.isPending} onClick={() => sendNow.mutate(s.id)}>
+              <button className="btn-ghost p-1.5" aria-label={`Send ${s.name} now`} title={s.enabled ? "Send now" : "Enable the schedule before sending"} disabled={!s.enabled || !meta.data?.email_enabled || sendNow.isPending} onClick={() => sendNow.mutate(s.id)}>
                 <Send className="h-4 w-4" />
               </button>
               <button className="btn-ghost p-1.5" aria-label={`Edit ${s.name}`} onClick={() => open(s)}>

@@ -81,6 +81,8 @@ class FindingEventOut(ORMModel):
     event: EventType
     from_status: Status | None
     to_status: Status | None
+    from_severity: Severity | None = None
+    to_severity: Severity | None = None
     comment: str | None
     scan_id: int | None
     actor: UserBrief | None

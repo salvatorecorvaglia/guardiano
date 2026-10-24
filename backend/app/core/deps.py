@@ -62,6 +62,8 @@ def get_principal(
     payload = decode_token(credential, "access")
     if payload is None:
         raise _unauthorized("Invalid or expired session")
+    if not settings.local_login and not payload.get("sso"):
+        raise _unauthorized("This server requires single sign-on")
     user = db.get(User, int(payload["sub"]))
     if user is None or not user.is_active:
         raise _unauthorized("User is disabled")

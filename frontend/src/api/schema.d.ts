@@ -2247,9 +2247,11 @@ export interface FindingEventOut {
   comment: string | null;
   created_at: string;
   event: EventType;
+  from_severity?: Severity | null;
   from_status: Status | null;
   id: number;
   scan_id: number | null;
+  to_severity?: Severity | null;
   to_status: Status | null;
 }
 export interface FindingLinkOut {

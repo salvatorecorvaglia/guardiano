@@ -44,7 +44,7 @@ def search(
 ):
     text = q.strip()
     pattern = like_pattern(text)
-    matching = findings_query(FindingFilters(q=text, scope=scope), "-severity").limit(limit)
+    matching = findings_query(FindingFilters(q=text, scope=scope), "-severity", db).limit(limit)
     found = db.scalars(matching).unique().all()
     assets = db.scalars(
         select(Asset)

@@ -136,10 +136,14 @@ function LimitRow({
 
 /** Quality gate for one asset, or the global default (`assetId: null`). */
 export default function GatePolicyCard({ assetId }: { assetId: number | null }) {
+  return <GatePolicyForm key={assetId ?? "global"} assetId={assetId} />;
+}
+
+function GatePolicyForm({ assetId }: { assetId: number | null }) {
   const { can } = useAuth();
   const qc = useQueryClient();
   const toast = useToast();
-  const editable = assetId === null ? can("admin") : can("manager");
+  const canEdit = assetId === null ? can("admin") : can("manager");
   const policies = useQuery({ queryKey: ["gate-policies"], queryFn: ({ signal }) => request("get", "/api/v1/gate-policies", { signal }) });
   const policy = policies.data?.find((p) => (p.asset?.id ?? null) === assetId);
   const globalPolicy = policies.data?.find((p) => !p.asset);
@@ -185,6 +189,7 @@ export default function GatePolicyCard({ assetId }: { assetId: number | null }) 
   });
 
   const dirty = form.dirty;
+  const editable = canEdit && !save.isPending && !remove.isPending;
 
   return (
     <section className="card p-4">
@@ -299,7 +304,7 @@ export default function GatePolicyCard({ assetId }: { assetId: number | null }) 
           </div>
         </div>
       )}
-      {editable && (
+      {canEdit && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button className="btn-secondary" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>
             {policy ? "Save gate" : "Create gate"}

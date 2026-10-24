@@ -4,7 +4,7 @@ import logging
 from collections import Counter
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.models import Finding, FindingEvent, FindingLink, FindingScan, Scan, User
@@ -13,10 +13,11 @@ from app.services import events, gate, inventory, lifecycle, tickets, triage
 from app.services.dedup import normalize_path
 from app.services.scan_context import ScanContext
 from app.services.scan_events import _EVENT_CAP, _emit_scan_events
-from app.services.scan_report import _new_finding, reported_severity
+from app.services.scan_report import _new_finding, reconcile_tools, reported_severity
 from app.services.serializers import finding_payload
 
 log = logging.getLogger(__name__)
+_PERSIST_CHUNK = 500
 
 _UPDATABLE = (
     "title",
@@ -41,7 +42,6 @@ class AppliedFindings:
     duplicate: int
     reopened: int
     new_by_severity: Counter[str]
-    created: list[Finding]
     notable_new: list[Finding]
     notable_reopened: list[Finding]
     reopened_from: list[tuple[Finding, str]]
@@ -60,7 +60,6 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
     rules = triage.load_rules(db, asset.id, now)
     rule_ctx = triage.context(db, asset, rules, (nf.cve_id for nf in batch.values())) if rules else None
     new_findings: list[Finding] = []
-    created: list[Finding] = []  # every new finding, uncapped: auto-ticketing applies its own cap
     reopened_from: list[tuple[Finding, str]] = []  # every reopened finding and the status it left
     reopened_findings: list[Finding] = []
     for key, nf in batch.items():
@@ -95,7 +94,6 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
                 # Auto-triage runs on brand-new findings only, never on ones a person has triaged.
                 triage.apply_rules(db, f, rules, scan_id=scan.id, now=now, ctx=rule_ctx)
             new_count += 1
-            created.append(f)
             new_by_severity[f.severity] += 1
             if len(new_findings) < _EVENT_CAP:
                 new_findings.append(f)
@@ -115,6 +113,21 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
                         comment=f"Moved from {where} to {new_where} (same {nf.tool_name} fingerprint)",
                         scan_id=scan.id,
                         created_at=now,
+                    )
+                )
+            previous_tools = f.tools or []
+            f.tools = reconcile_tools(
+                previous_tools, sources[key], context.prepared.findings.tools, context.options.close_missing
+            )
+            gone = [t for t in previous_tools if t not in f.tools]
+            if gone:
+                db.add(
+                    FindingEvent(
+                        finding=f,
+                        event=EventType.no_longer_reported.value,
+                        scan_id=scan.id,
+                        created_at=now,
+                        comment=f"No longer reported by {', '.join(gone)} (scan #{scan.id})",
                     )
                 )
             primary = not f.tools or f.tools[0] == nf.tool_name
@@ -141,7 +154,6 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
                         scan_id=scan.id,
                     )
                 )
-            f.tools = list(dict.fromkeys([*(f.tools or []), *sources[key]]))
             f.last_seen_at = max(f.last_seen_at, now) if f.last_seen_at else now
             f.last_scan_id = scan.id
             f.occurrence_count = (f.occurrence_count or 0) + 1
@@ -162,17 +174,19 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
                 if reopened <= _EVENT_CAP:
                     reopened_findings.append(f)
         touched.append(f)
-
-    db.flush()
+        if len(touched) >= _PERSIST_CHUNK:
+            db.flush()
+            db.execute(insert(FindingScan), [{"finding_id": row.id, "scan_id": scan.id} for row in touched])
+            touched.clear()
     if touched:
-        db.add_all([FindingScan(finding_id=f.id, scan_id=scan.id) for f in touched])
+        db.flush()
+        db.execute(insert(FindingScan), [{"finding_id": row.id, "scan_id": scan.id} for row in touched])
 
     return AppliedFindings(
         new_count,
         dup_count,
         reopened,
         new_by_severity,
-        created,
         new_findings,
         reopened_findings,
         reopened_from,
@@ -243,7 +257,7 @@ def persist_scan(db: Session, context: ScanContext) -> Scan:
     result = apply_findings(db, context)
     auto_resolved = resolve_missing(db, context)
     new_count, dup_count, reopened = result.new, result.duplicate, result.reopened
-    new_by_severity, created = result.new_by_severity, result.created
+    new_by_severity = result.new_by_severity
     new_findings, reopened_findings = result.notable_new, result.notable_reopened
     reopened_from = result.reopened_from
     db.flush()  # gate queries must observe auto-resolutions in this transaction
@@ -280,7 +294,8 @@ def persist_scan(db: Session, context: ScanContext) -> Scan:
                 tickets.queue_status_sync(db, f, previous, f"Guardiano (scan #{scan.id})")
 
     db.flush()  # findings need ids before they appear in an event payload
-    tickets.queue_auto_tickets(db, asset.id, created)
+    if new_count:
+        tickets.queue_auto_tickets(db, asset.id, scan.id)
     notable = [finding_payload(f) for f in new_findings if f.status in ACTIVE_STATUSES]
     _emit_scan_events(db, scan, asset, False, notable)
     for f in reopened_findings:

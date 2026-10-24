@@ -13,7 +13,7 @@ from app.parsers.base import NormalizedFinding
 from app.services import gate, triage
 from app.services.scan_context import ScanContext
 from app.services.scan_events import _emit_scan_events
-from app.services.scan_report import IngestOptions, _new_finding, reported_severity
+from app.services.scan_report import IngestOptions, _new_finding, reconcile_tools, reported_severity
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,10 @@ def preview_projection(db: Session, context: ScanContext) -> tuple[gate.Projecti
             projection.additions.append(gate.GateFinding.of(f))
         else:
             f = gate.GateFinding.of(stored)
-            f.severity = stored.severity_override or reported_severity(stored, nf)
+            tools = reconcile_tools(
+                stored.tools or [], context.prepared.findings.sources[key], report_tools, opts.close_missing
+            )
+            f.severity = stored.severity_override or reported_severity(stored, nf, tools=tools)
             if stored.status == "resolved" or (
                 stored.status == "risk_accepted"
                 and stored.risk_accepted_until is not None

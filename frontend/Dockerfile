@@ -16,10 +16,14 @@ COPY . .
 RUN pnpm build
 
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
+# Alpine's fixed Brotli library (CVE-2026-111497); retain the reviewed nginx base.
+USER root
+RUN apk add --no-cache 'brotli-libs>=1.2.1-r0'
 ENV BACKEND_URL=http://backend:8000 \
     MAX_UPLOAD_MB=50 \
     REAL_IP_FROM=127.0.0.1/32 \
-    NGINX_ENVSUBST_FILTER="^(BACKEND_URL|MAX_UPLOAD_MB|REAL_IP_FROM)$"
+    NGINX_ENVSUBST_FILTER="^(BACKEND_URL|MAX_REQUEST_MB|REAL_IP_FROM)$"
+COPY --chmod=755 nginx/15-upload-limit.envsh /docker-entrypoint.d/15-upload-limit.envsh
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/docs-security-headers.conf /etc/nginx/snippets/docs-security-headers.conf

@@ -6,7 +6,7 @@ from app.api.v1.references import ensure_asset
 from app.core.crypto import encrypt
 from app.core.db import get_db
 from app.core.deps import admin_only
-from app.models import Integration, User
+from app.models import FindingLink, Integration, Job, PrComment, TicketOperation, User
 from app.schemas.integration import (
     IntegrationCheck,
     IntegrationCreate,
@@ -68,19 +68,49 @@ def update_integration(
     user: User = Depends(admin_only),
     db: Session = Depends(get_db),
 ):
-    integration = _load(db, integration_id)
-    if "asset_id" in body.model_fields_set:
-        ensure_asset(db, body.asset_id)
-        integration.asset_id = body.asset_id
+    integration = db.get(Integration, integration_id, with_for_update=True, populate_existing=True)
+    if integration is None:
+        raise HTTPException(404, "Integration not found")
+    destination_changed = any(
+        field in body.model_fields_set
+        and (field == "asset_id" or getattr(body, field) is not None)
+        and getattr(body, field) != getattr(integration, field)
+        for field in ("asset_id", "base_url", "project")
+    )
+    if destination_changed:
+        references = (FindingLink, PrComment, TicketOperation)
+        linked = any(
+            db.scalar(select(model.integration_id).where(model.integration_id == integration.id).limit(1))
+            is not None
+            for model in references
+        )
+        queued = db.scalar(
+            select(Job.id)
+            .where(
+                Job.kind.in_([tickets.AUTO_JOB, "scm.feedback"]),
+                Job.status.in_(["queued", "running", "dead"]),
+                Job.payload["integration_id"].as_integer() == integration.id,
+            )
+            .limit(1)
+        )
+        if linked or queued is not None:
+            raise HTTPException(
+                409, "This destination has linked tickets or pending work; create a new integration"
+            )
     if body.scm_feedback and integration.kind not in ("github", "gitlab"):
         raise HTTPException(422, "Commit and pull-request feedback needs GitHub or GitLab")
     fields = (
         "name", "base_url", "project", "username", "issue_type", "enabled", "scm_feedback",
         "close_resolves_finding", "done_transition", "reopen_transition", "auto_ticket_kev",
-        "auto_ticket_min_severity",
+        "auto_ticket_min_severity", "asset_id", "labels",
     )  # fmt: skip
     before = audit.snapshot(integration, fields)
     for field in fields:
+        if field == "asset_id":
+            if field in body.model_fields_set:
+                ensure_asset(db, body.asset_id)
+                integration.asset_id = body.asset_id
+            continue
         if (value := getattr(body, field)) is not None:
             setattr(integration, field, value)
     if "auto_ticket_min_severity" in body.model_fields_set and body.auto_ticket_min_severity is None:
@@ -88,8 +118,6 @@ def update_integration(
     # An empty transition name removes it: Guardiano then only comments, as before.
     integration.done_transition = integration.done_transition or None
     integration.reopen_transition = integration.reopen_transition or None
-    if body.labels is not None:
-        integration.labels = body.labels
     changes = audit.diff(before, integration)
     if body.token:
         integration.secret_encrypted = encrypt(body.token)

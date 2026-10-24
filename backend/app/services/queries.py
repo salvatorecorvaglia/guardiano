@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from sqlalchemy import Select, and_, case, exists, false, func, literal, or_, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.config import settings
@@ -18,13 +18,13 @@ from app.services.scope import Scope
 ACTIVE = [s.value for s in ACTIVE_STATUSES]
 
 
-def sla_due_expr() -> ColumnElement:
-    return sla.sla_due_expr()
+def sla_due_expr(db: Session | None = None) -> ColumnElement:
+    return sla.sla_due_expr(db=db)
 
 
-def overdue_expr(now: datetime | None = None) -> ColumnElement:
+def overdue_expr(now: datetime | None = None, *, db: Session | None = None) -> ColumnElement:
     # coalesce: severities without an SLA (info) are never overdue, rather than NULL (which NOT can't negate).
-    return and_(Finding.status.in_(ACTIVE), func.coalesce(sla_due_expr() < (now or utcnow()), false()))
+    return and_(Finding.status.in_(ACTIVE), func.coalesce(sla_due_expr(db) < (now or utcnow()), false()))
 
 
 def severity_weight_expr() -> ColumnElement:
@@ -72,6 +72,7 @@ class FindingFilters:
     product_id: int | None = None
     environment: str | None = None
     tool: str | None = None
+    tool_case_insensitive: bool = False  # triage matcher semantics; public list filters stay exact
     cwe: str | None = None
     cve: str | None = None
     package: str | None = None
@@ -97,7 +98,7 @@ def like_pattern(value: str) -> str:
     return f"%{escaped}%"
 
 
-def apply_filters(stmt: Select, f: FindingFilters) -> Select:
+def apply_filters(stmt: Select, f: FindingFilters, db: Session | None = None) -> Select:
     stmt = f.scope.narrow(stmt, Finding.asset_id)
     if f.q and f.q.strip():
         q = f.q.strip()
@@ -127,7 +128,13 @@ def apply_filters(stmt: Select, f: FindingFilters) -> Select:
     if f.environment:
         stmt = stmt.where(Finding.asset_id.in_(select(Asset.id).where(Asset.environment == f.environment)))
     if f.tool:
-        stmt = stmt.where(Finding.tools.contains([f.tool]))
+        if f.tool_case_insensitive:
+            tools = func.unnest(Finding.tools).table_valued("name").render_derived()
+            stmt = stmt.where(
+                select(1).select_from(tools).where(func.lower(tools.c.name) == f.tool.lower()).exists()
+            )
+        else:
+            stmt = stmt.where(Finding.tools.contains([f.tool]))
     if f.cwe:
         cwe = f.cwe.upper() if f.cwe.upper().startswith("CWE-") else f"CWE-{f.cwe}"
         stmt = stmt.where(Finding.cwe.contains([cwe]))
@@ -140,9 +147,9 @@ def apply_filters(stmt: Select, f: FindingFilters) -> Select:
     elif f.assignee_id:
         stmt = stmt.where(Finding.assignee_id == f.assignee_id)
     if f.overdue is True:
-        stmt = stmt.where(overdue_expr())
+        stmt = stmt.where(overdue_expr(db=db))
     elif f.overdue is False:
-        stmt = stmt.where(~overdue_expr())
+        stmt = stmt.where(~overdue_expr(db=db))
     if f.first_seen_from:
         stmt = stmt.where(Finding.first_seen_at >= f.first_seen_from)
     if f.first_seen_to:
@@ -188,16 +195,16 @@ SORTS: dict[str, ColumnElement] = {
 }
 
 
-def findings_query(f: FindingFilters, sort: str = "-severity") -> Select:
+def findings_query(f: FindingFilters, sort: str = "-severity", db: Session | None = None) -> Select:
     stmt = select(Finding).options(
         joinedload(Finding.asset), joinedload(Finding.assignee), joinedload(Finding.intel)
     )
-    stmt = apply_filters(stmt, f)
+    stmt = apply_filters(stmt, f, db)
     desc = sort.startswith("-")
     key = sort.lstrip("-")
     # The due date depends on the current SLA policy, so it is built per query rather than in SORTS.
     if key == "due":
-        col = sla_due_expr()
+        col = sla_due_expr(db)
     elif key == "epss":
         col = _intel(VulnIntel.epss)
     elif key == "priority":

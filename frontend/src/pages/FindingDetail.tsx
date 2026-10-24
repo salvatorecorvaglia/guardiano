@@ -101,7 +101,6 @@ function eventText(e: FindingEvent) {
     case "assigned":
     case "tags_changed":
     case "due_date_changed":
-    case "severity_changed":
     case "acceptance_requested":
     case "acceptance_rejected":
       return (
@@ -109,6 +108,8 @@ function eventText(e: FindingEvent) {
           <span className="font-medium">{who}</span>: {e.comment}
         </>
       );
+    case "severity_changed":
+      return <><span className="font-medium">{who}</span>: {e.comment || `Severity changed from ${e.from_severity ?? "unknown"} to ${e.to_severity ?? "unknown"}`}</>;
     case "comment":
       return (
         <>
@@ -121,6 +122,11 @@ function eventText(e: FindingEvent) {
 }
 
 export default function FindingDetail() {
+  const { id } = useParams();
+  return <FindingDetailPage key={id} />;
+}
+
+function FindingDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   // Return to the list the user came from, with its filters (falls back to all findings).

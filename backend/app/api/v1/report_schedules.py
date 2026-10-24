@@ -116,9 +116,17 @@ def send_now(schedule_id: int, _: User = Depends(manager), db: Session = Depends
         raise HTTPException(422, "Email is not configured (SMTP_HOST)")
     schedule = _load(db, schedule_id)
     people = reports.recipients(db, schedule)
+    if not schedule.enabled:
+        raise HTTPException(422, "Enable the schedule before sending it")
     for person in people:
-        jobs.enqueue(db, email.SEND_JOB, {
-            "kind": "report", "recipient_id": person.id, "schedule_id": schedule.id,
-        })
+        jobs.enqueue(
+            db,
+            email.SEND_JOB,
+            {
+                "kind": "report",
+                "recipient_id": person.id,
+                "schedule_id": schedule.id,
+            },
+        )
     db.commit()
     return {"queued": len(people)}

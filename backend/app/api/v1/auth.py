@@ -197,6 +197,8 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     else:
         # Consume pre-upgrade tokens before moving them into a tracked family.
         sessions.revoke(db, payload)
+    if not settings.local_login and (family is None or not family.is_sso):
+        raise HTTPException(401, "This server requires single sign-on")
     return _issue(response, user, db, family)
 
 
@@ -474,6 +476,34 @@ def oidc_callback(
 # ---- two-factor authentication -------------------------------------------------------------------
 
 
+def _management_user(db: Session, user: User) -> None:
+    db.refresh(user, with_for_update=True)
+    if mfa.is_locked(user):
+        raise HTTPException(429, "Too many second-factor attempts; try again later")
+
+
+def _management_code(db: Session, user: User, request: Request, code: str, *, recovery: bool = False):
+    valid = mfa.check_code(user, code)
+    if not valid and recovery:
+        valid = mfa.spend_recovery_code(db, user, code)
+    if valid:
+        mfa.record_success(user)
+        return
+    mfa.record_failure(user)
+    audit.record(
+        db,
+        "auth.mfa_failed",
+        actor=user,
+        request=request,
+        target_type="user",
+        target_id=user.id,
+        target_label=user.email,
+        changes={"management": True},
+    )
+    db.commit()  # failures must survive the error response, across API replicas
+    raise HTTPException(400, "That code is not valid; check the clock or wait for the next code")
+
+
 @router.post("/login/mfa", response_model=LoginResponse)
 @limiter.limit(settings.login_rate_limit)
 def login_mfa(request: Request, body: MfaVerify, response: Response, db: Session = Depends(get_db)):
@@ -544,20 +574,19 @@ def mfa_setup(user: User = Depends(session_user), db: Session = Depends(get_db))
 
 
 @router.post("/mfa/enable", response_model=MfaEnrollment)
+@limiter.limit(settings.login_rate_limit)
 def mfa_enable(
-    body: MfaCode, request: Request, response: Response,
-    user: User = Depends(session_user), db: Session = Depends(get_db)
+    body: MfaCode,
+    request: Request,
+    response: Response,
+    user: User = Depends(session_user),
+    db: Session = Depends(get_db),
 ):
     """Confirm enrolment with a code from the app, and hand back the recovery codes."""
+    _management_user(db, user)
     if user.mfa_enabled:
         raise HTTPException(status.HTTP_409_CONFLICT, "Two-factor authentication is already on")
-    if not user.mfa_secret or not mfa.check_code(user, body.code):
-        detail = (
-            "That code has already been used; wait for the next one"
-            if mfa.spent(user, body.code)
-            else "That code is not valid; check the clock on your phone and try again"
-        )
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail)
+    _management_code(db, user, request, body.code)
     user.mfa_enabled = True
     user.token_version += 1
     mfa.record_success(user)
@@ -578,12 +607,15 @@ def mfa_enable(
 
 
 @router.post("/mfa/recovery-codes", response_model=MfaEnabled)
+@limiter.limit(settings.login_rate_limit)
 def mfa_new_recovery_codes(
     body: MfaCode, request: Request, user: User = Depends(session_user), db: Session = Depends(get_db)
 ):
     """Replace the recovery codes, proving possession of the authenticator first."""
-    if not user.mfa_enabled or not mfa.check_code(user, body.code):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That code is not valid")
+    _management_user(db, user)
+    if not user.mfa_enabled:
+        raise HTTPException(400, "Two-factor authentication is not enabled")
+    _management_code(db, user, request, body.code)
     codes = mfa.issue_recovery_codes(db, user)
     audit.record(
         db,
@@ -599,16 +631,17 @@ def mfa_new_recovery_codes(
 
 
 @router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(settings.login_rate_limit)
 def mfa_disable(
     body: MfaDisable, request: Request, user: User = Depends(session_user), db: Session = Depends(get_db)
 ):
     """Turn it off. The current password is required, so a borrowed session cannot weaken the account."""
+    _management_user(db, user)
     if not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
-    if not user.mfa_enabled or not (
-        mfa.check_code(user, body.code) or mfa.spend_recovery_code(db, user, body.code)
-    ):
-        raise HTTPException(400, "A valid authenticator or recovery code is required")
+    if not user.mfa_enabled:
+        raise HTTPException(400, "Two-factor authentication is not enabled")
+    _management_code(db, user, request, body.code, recovery=True)
     mfa.disable(db, user)
     user.token_version += 1
     audit.record(

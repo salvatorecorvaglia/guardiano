@@ -3,6 +3,8 @@ result attributed to the wrong rule, a live result dropped as suppressed."""
 
 import logging
 
+import pytest
+
 from app.parsers import cyclonedx, grype, guardiano_json, sarif, trivy_json
 from app.parsers.base import normalize_severity
 
@@ -145,3 +147,6 @@ def test_a_single_reference_given_as_a_string_is_one_reference():
     }
     (finding,) = guardiano_json.parse(report).findings
     assert finding.references == [{"url": "https://example.test/advisory"}]
+
+
+pytestmark = pytest.mark.no_database

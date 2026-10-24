@@ -1,6 +1,5 @@
 """Pure report preparation, column-safe normalization, and finding construction."""
 
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -155,9 +154,18 @@ def prepare_findings(report: ParsedReport, asset_id: int) -> PreparedFindings:
     return PreparedFindings(tool_name, tools, batch, sources)
 
 
-def reported_severity(f: Finding, nf: NormalizedFinding) -> str:
+def reconcile_tools(
+    previous: list[str], sources: list[str], report_tools: set[str], complete: bool
+) -> list[str]:
+    """Keep sources outside this report, replacing its sources only for complete scans."""
+    retained = [t for t in previous if not complete or t not in report_tools or t in sources]
+    return list(dict.fromkeys([*retained, *sources]))
+
+
+def reported_severity(f: Finding, nf: NormalizedFinding, *, tools: list[str] | None = None) -> str:
     reported = f.scanner_severity or f.severity
-    if not f.tools or f.tools[0] == nf.tool_name:
+    sources = f.tools if tools is None else tools
+    if not sources or sources[0] == nf.tool_name:
         return nf.severity or reported
     return nf.severity if SEVERITY_RANK.get(nf.severity, 0) > SEVERITY_RANK.get(reported, 0) else reported
 
@@ -222,7 +230,7 @@ class PreparedReport:
 def prepare_report(raw: bytes, asset_id: int, opts: IngestOptions) -> PreparedReport:
     try:
         data = load_json(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, ValueError) as exc:
         raise ParseError(f"File is not valid JSON: {exc}") from exc
     except RecursionError as exc:
         raise ParseError("File is not valid JSON: nesting is too deep") from exc

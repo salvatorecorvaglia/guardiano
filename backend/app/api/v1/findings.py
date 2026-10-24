@@ -112,8 +112,8 @@ def list_findings(
     _: User = Depends(require(Role.viewer)),
     db: Session = Depends(get_db),
 ):
-    stmt = findings_query(f, sort)
-    total = db.scalar(apply_filters(select(func.count(Finding.id)), f)) or 0
+    stmt = findings_query(f, sort, db)
+    total = db.scalar(apply_filters(select(func.count(Finding.id)), f, db)) or 0
     rows = db.scalars(stmt.offset((page - 1) * page_size).limit(page_size)).unique().all()
     return Page(items=[finding_out(r) for r in rows], total=total, page=page, page_size=page_size)
 
@@ -203,7 +203,7 @@ def _export(
         with SessionLocal() as db:
             # yield_per streams from a server-side cursor instead of buffering every row; the eager
             # loads are many-to-one, so no unique() pass (which would also hold every row) is needed.
-            stmt = findings_query(f, sort).execution_options(yield_per=500)
+            stmt = findings_query(f, sort, db).execution_options(yield_per=500)
             yield from render(db.scalars(stmt))
 
     return StreamingResponse(
@@ -377,7 +377,7 @@ def bulk_update_matching(
 
     Refused, with the count, when more than MAX_BULK_MATCHING findings match.
     """
-    matching = apply_filters(select(Finding.id), f)  # narrowed to the caller's teams by the filters
+    matching = apply_filters(select(Finding.id), f, db)  # narrowed to the caller's teams by the filters
     total = db.scalar(select(func.count()).select_from(matching.subquery())) or 0
     if total > MAX_BULK_MATCHING:
         raise ValidationFailed(

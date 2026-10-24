@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import Asset, ReportSchedule, User
+from app.models import ReportSchedule, User
 from app.services import analytics
 from app.services.email import Message, _link, _wrap
 from app.services.scope import scope_for
@@ -67,8 +67,7 @@ def build(db: Session, schedule: ReportSchedule, user: User) -> Message:
             [[row["open"], row["critical_high"], row["overdue"], row["accepted"], row["resolved"],
               row["mttr_days"] or "—"]] if row else [],
         )  # fmt: skip
-        in_product = set(db.scalars(select(Asset.id).where(Asset.product_id == schedule.product_id)))
-        riskiest = [a for a in analytics.top_assets(db, 50, scope=scope) if a["id"] in in_product][:5]
+        riskiest = analytics.top_assets(db, 5, scope=scope, product_id=schedule.product_id)
         link = _link(f"/findings?product_id={schedule.product_id}&status=open&status=in_progress")
     else:
         s = analytics.summary(db, scope=scope)

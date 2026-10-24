@@ -201,7 +201,7 @@ def collect(db: Session) -> list[tuple[str, str, dict[str, str], float]]:
     add(
         "guardiano_findings_overdue",
         "Open findings past their remediation SLA.",
-        db.scalar(select(func.count()).select_from(Finding).where(overdue_expr())),
+        db.scalar(select(func.count()).select_from(Finding).where(overdue_expr(db=db))),
     )
     for status in Status:
         add(

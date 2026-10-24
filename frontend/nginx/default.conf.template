@@ -5,7 +5,7 @@ server {
     server_tokens off;
     root /usr/share/nginx/html;
 
-    client_max_body_size ${MAX_UPLOAD_MB}m;
+    client_max_body_size ${MAX_REQUEST_MB}m;
 
     # Client IP: only trust X-Forwarded-For from REAL_IP_FROM (your TLS proxy / load balancer).
     # $remote_addr is then the real client and is the only value forwarded to the backend, so

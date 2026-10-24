@@ -62,6 +62,7 @@ fail_under = 80
 skip_empty = true
 
 [tool.pytest.ini_options]
+markers = ["no_database: pure tests that must run without PostgreSQL"]
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = [

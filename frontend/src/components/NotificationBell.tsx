@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { request } from "../api/typed";
 
 import { relTime } from "../lib/format";
+import { ErrorBox, Spinner } from "./ui";
 
 const KEY = ["notifications"];
 
@@ -23,6 +24,7 @@ export default function NotificationBell() {
   const read = useMutation({
     mutationFn: (ids: number[] | null) => request("post", "/api/v1/notifications/read", { body: { ids } }),
     onSuccess: (data) => qc.setQueryData(KEY, data),
+    onError: () => setOpen(true),
   });
 
   useEffect(() => {
@@ -60,11 +62,17 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between border-b border-line px-3 py-2">
             <span className="text-sm font-semibold">Notifications</span>
             {unread > 0 && (
-              <button className="text-xs text-accent hover:underline" onClick={() => read.mutate(null)}>
+              <button className="text-xs text-accent hover:underline" disabled={read.isPending} onClick={() => read.mutate(null)}>
                 Mark all read
               </button>
             )}
           </div>
+          {(list.error || read.error) && <div className="space-y-2 p-3">
+            <ErrorBox error={list.error || read.error} />
+            {list.error && <button className="btn-secondary" onClick={() => void list.refetch()}>Retry notifications</button>}
+            {read.error && <button className="btn-secondary" disabled={read.isPending} onClick={() => read.mutate(read.variables ?? null)}>Retry marking read</button>}
+          </div>}
+          {list.isPending && <div role="status" aria-label="Loading notifications" className="p-3"><Spinner /></div>}
           <ul className="max-h-96 divide-y divide-line overflow-y-auto">
             {items.map((n) => (
               <li key={n.id}>
@@ -81,7 +89,7 @@ export default function NotificationBell() {
                 </button>
               </li>
             ))}
-            {items.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nothing new</li>}
+            {!list.isPending && !list.error && items.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nothing new</li>}
           </ul>
         </div>
       )}

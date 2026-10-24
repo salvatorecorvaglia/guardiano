@@ -96,6 +96,17 @@ def _severity(rule: dict[str, Any], result: dict[str, Any]) -> tuple[str, float 
     return _LEVEL_MAP.get(level, "medium"), None
 
 
+def _artifact_uri(location: dict[str, Any], run: dict[str, Any]) -> str | None:
+    """Resolve an indexed artifact without fetching scanner-controlled locations."""
+    if location.get("uri"):
+        return location["uri"]
+    index = location.get("index")
+    artifacts = run.get("artifacts") or []
+    if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(artifacts):
+        return (artifacts[index].get("location") or {}).get("uri")
+    return None
+
+
 def parse(data: dict[str, Any]) -> ParsedReport:
     runs = data.get("runs")
     if not isinstance(runs, list):
@@ -134,8 +145,9 @@ def parse(data: dict[str, Any]) -> ParsedReport:
             for loc in res.get("locations") or []:
                 phys = loc.get("physicalLocation") or {}
                 art = phys.get("artifactLocation") or {}
-                if art.get("uri"):
-                    file_path = art["uri"]
+                uri = _artifact_uri(art, run)
+                if uri:
+                    file_path = uri
                     region = phys.get("region") or {}
                     line_start = to_int(region.get("startLine"))
                     line_end = to_int(region.get("endLine")) or line_start

@@ -46,7 +46,7 @@ def _ensure_database() -> None:
     admin.dispose()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def _schema():
     from app.core.schema import initialize_schema
 
@@ -58,7 +58,11 @@ def _schema():
 
 
 @pytest.fixture(autouse=True)
-def _clean(_schema):
+def _clean(request):
+    if request.node.get_closest_marker("no_database") and not {"db", "client"} & set(request.fixturenames):
+        yield
+        return
+    request.getfixturevalue("_schema")
     # Derived from the models rather than listed by hand: a table added later is emptied between
     # tests automatically, instead of quietly leaking rows into whichever test runs next.
     import app.models  # noqa: F401  -- importing registers every table on Base.metadata
@@ -136,10 +140,12 @@ def count_queries():
     from app.core.db import engine
 
     @contextmanager
-    def counting():
+    def counting(*, reads_only=False):
         seen: list[str] = []
 
         def record(conn, cursor, statement, *args):
+            if reads_only and not statement.lstrip().upper().startswith(("SELECT", "WITH")):
+                return
             if not statement.lstrip().upper().startswith(("SAVEPOINT", "RELEASE")):
                 seen.append(statement)
 

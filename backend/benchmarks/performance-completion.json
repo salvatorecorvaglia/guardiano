@@ -1,0 +1,372 @@
+{
+  "recorded_at": "2026-10-24T18:11:16.024694+00:00",
+  "scope": "Completion of the five remaining audit points; supersedes residual-risk and performance status in remediation-validation.json.",
+  "implementation": "Uncommitted working tree; comparison baseline is a source snapshot after the earlier 822-test remediation, before these performance changes.",
+  "completed_phases": [
+    {
+      "point": "Narrow ingestion row locks",
+      "implementation": "One ID-ordered lock over direct matches, optional fingerprint candidates and scanner/type resolution candidates; includes closed candidates that triage may reopen. Asset serialization retained.",
+      "regression_checks": "Matched, fingerprint and resolution rows block competing writes; unrelated scanner/type rows remain available."
+    },
+    {
+      "point": "Profile and optimize analytics",
+      "implementation": "Intersect ordered status/severity intervals instead of repeatedly sorting carried window groups.",
+      "regression_checks": "Sparse history, reopen, simultaneous changes and legacy parity tests; identical hashes for all four profiled responses."
+    },
+    {
+      "point": "Measure actual connection-pool waits",
+      "implementation": "Benchmark-only blocking queue instrumentation, with a real timeout regression test.",
+      "regression_checks": "Normal pool and constrained two-connection workload measured; no workload timeouts."
+    },
+    {
+      "point": "Measure maximum-size upload memory",
+      "implementation": "Separate HTTP client/server probe; flush findings, history and scan links in batches of 500. Select auto-ticket candidates in SQL. No intermediate commits.",
+      "regression_checks": "Two 50 MiB/100,000-finding uploads verify new/duplicate counts and persisted inventory; failure after multiple batches rolls back the entire scan. Proxy accepts exact limit and rejects one byte over."
+    },
+    {
+      "point": "Remove 44 unfixed high Debian OS findings",
+      "implementation": "Digest-pinned Python 3.12 Alpine builder and nonroot runtime using the same hash-locked dependencies.",
+      "regression_checks": "Full backend suite inside Alpine, production startup/MFA/ingestion, encrypted restore and final image scans."
+    }
+  ],
+  "validation": {
+    "backend_tests": 827,
+    "backend_runtime": "Python 3.12, Alpine/musl, Docker arm64",
+    "backend_coverage_percent": 93.97,
+    "frontend_tests": 92,
+    "api_generator_tests": 2,
+    "browser_accessibility_scenarios": 5,
+    "operational_tests": 7,
+    "pure_tests_without_postgresql": 65,
+    "backend_ruff_frontend_lint_typecheck_build_api_contracts": "passed",
+    "production_startup_mfa_ingestion_revocation": "passed",
+    "encrypted_application_restore": "passed",
+    "rollback_across_persistence_batches": "passed",
+    "proxy_boundary": [
+      {
+        "file_bytes": 52428800,
+        "http_status": 201
+      },
+      {
+        "file_bytes": 52428801,
+        "http_status": 413
+      }
+    ],
+    "format_check_note": "Repository-wide optional format checks still report existing style differences (five unrelated backend files and frontend formatting). Required Ruff/Biome lint checks pass; no bulk formatting was applied."
+  },
+  "latency": {
+    "environment": "macOS arm64; Docker PostgreSQL 16; matched in-process mixed reads; final run after staging, builds, scans and full tests completed. Baseline and final use separate fresh disposable databases.",
+    "allowed_regression_percent": 10,
+    "gate_passed": true,
+    "change_percent": {
+      "read_p95_seconds": -28.89,
+      "concurrent_read_p95_seconds": -22.28,
+      "process_max_rss": -15.74
+    },
+    "before": {
+      "seeded_findings": 100000,
+      "read_workload": "mixed",
+      "transport": "in-process",
+      "benchmark_runtime_versions": {
+        "python": "3.13.13",
+        "fastapi": "0.159.1",
+        "sqlalchemy": "2.1.6"
+      },
+      "history_rows": 275000,
+      "upload_target": "same-populated-asset",
+      "read_routes": [
+        "/api/v1/findings",
+        "/api/v1/analytics/summary",
+        "/api/v1/analytics/trends",
+        "/api/v1/search"
+      ],
+      "upload_findings_each": 1000,
+      "concurrent_uploads": 2,
+      "read_p95_seconds": 1.2608540351153352,
+      "concurrent_read_p95_seconds": 1.260385850002058,
+      "upload_seconds": [
+        0.9226225000165869,
+        0.5771948340116069
+      ],
+      "route_p95_seconds": {
+        "baseline": {
+          "/api/v1/findings": 0.2335825796399149,
+          "/api/v1/analytics/summary": 0.4492990766259027,
+          "/api/v1/analytics/trends": 1.2904983376152814,
+          "/api/v1/search": 0.10094133428210625
+        },
+        "concurrent": {
+          "/api/v1/findings": 0.2877311201955308,
+          "/api/v1/analytics/summary": 0.424939545369125,
+          "/api/v1/analytics/trends": 1.2960709344610222,
+          "/api/v1/search": 0.1688007904260303
+        }
+      },
+      "process_max_rss": 254951424,
+      "rss_unit": "bytes"
+    },
+    "after": {
+      "seeded_findings": 100000,
+      "read_workload": "mixed",
+      "transport": "in-process",
+      "benchmark_runtime_versions": {
+        "python": "3.13.13",
+        "fastapi": "0.159.1",
+        "sqlalchemy": "2.1.6"
+      },
+      "history_rows": 275000,
+      "upload_target": "same-populated-asset",
+      "read_routes": [
+        "/api/v1/findings",
+        "/api/v1/analytics/summary",
+        "/api/v1/analytics/trends",
+        "/api/v1/search"
+      ],
+      "upload_findings_each": 1000,
+      "concurrent_uploads": 2,
+      "pool_queue_wait": {
+        "warmup": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "baseline": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "concurrent": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        }
+      },
+      "read_p95_seconds": 0.8965946788492147,
+      "concurrent_read_p95_seconds": 0.97961628545454,
+      "upload_seconds": [
+        0.5427862080105115,
+        0.8397488750051707
+      ],
+      "route_p95_seconds": {
+        "baseline": {
+          "/api/v1/findings": 0.27662076698616145,
+          "/api/v1/analytics/summary": 0.4419354642450344,
+          "/api/v1/analytics/trends": 0.9194818955045776,
+          "/api/v1/search": 0.09396043619635748
+        },
+        "concurrent": {
+          "/api/v1/findings": 0.32421025771473067,
+          "/api/v1/analytics/summary": 0.5053509809629759,
+          "/api/v1/analytics/trends": 1.0444358296634164,
+          "/api/v1/search": 0.1153479345884989
+        }
+      },
+      "process_max_rss": 214827008,
+      "rss_unit": "bytes"
+    },
+    "excluded_trial": "A preliminary after run used default findings-only reads and was correctly rejected by the workload identity gate; it is not used in this comparison."
+  },
+  "analytics_profiles": {
+    "method": "Actual bound application SQL with EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) on the same 100,000-finding/275,000-history-row seeded database. Single profile per implementation; timings are observations, not guarantees.",
+    "queries": {
+      "trends": {
+        "response_hashes_match": true,
+        "result_sha256": "6da503138f39cb8d37a1e885e7451c61539b4666ef64ac4e85901b6f31f2109b",
+        "before_wall_seconds": 0.8835802499961574,
+        "after_wall_seconds": 0.7122175419935957,
+        "before_explain_execution_ms": 1188.064,
+        "after_explain_execution_ms": 890.148,
+        "explain_execution_change_percent": -25.08,
+        "query_count": 5
+      },
+      "open_series": {
+        "response_hashes_match": true,
+        "result_sha256": "d49fae6b599a46420bc366458599427b86ebbb776ed6a8ab84ed1e13a4a334d3",
+        "before_wall_seconds": 0.7618047920113895,
+        "after_wall_seconds": 0.5707140830054414,
+        "before_explain_execution_ms": 1147.558,
+        "after_explain_execution_ms": 830.604,
+        "explain_execution_change_percent": -27.62,
+        "query_count": 1
+      },
+      "summary": {
+        "response_hashes_match": true,
+        "result_sha256": "aaddef843575808e2b57d7e265644952ff83fd35993edf6c5dae22e49db707c3",
+        "before_wall_seconds": 0.29013666600803845,
+        "after_wall_seconds": 0.3112184169876855,
+        "before_explain_execution_ms": 276.684,
+        "after_explain_execution_ms": 265.879,
+        "explain_execution_change_percent": -3.91,
+        "query_count": 4
+      },
+      "breakdown": {
+        "response_hashes_match": true,
+        "result_sha256": "0b35a0df91cb3c103f87c3622e9ffe4c72c6007ff4d2e4dca6e55c0cf4908a2e",
+        "before_wall_seconds": 0.07436579099157825,
+        "after_wall_seconds": 0.078462125005899,
+        "before_explain_execution_ms": 76.767,
+        "after_explain_execution_ms": 78.216,
+        "explain_execution_change_percent": 1.89,
+        "query_count": 1
+      }
+    }
+  },
+  "constrained_pool": {
+    "pool_size": 2,
+    "max_overflow": 0,
+    "percentile_method": "inclusive",
+    "environment": "Fresh disposable database; no competing builds, scans or full test runs.",
+    "result": {
+      "seeded_findings": 100000,
+      "read_workload": "mixed",
+      "transport": "in-process",
+      "benchmark_runtime_versions": {
+        "python": "3.13.13",
+        "fastapi": "0.159.1",
+        "sqlalchemy": "2.1.6"
+      },
+      "history_rows": 275000,
+      "upload_target": "same-populated-asset",
+      "read_routes": [
+        "/api/v1/findings",
+        "/api/v1/analytics/summary",
+        "/api/v1/analytics/trends",
+        "/api/v1/search"
+      ],
+      "upload_findings_each": 1000,
+      "concurrent_uploads": 2,
+      "pool_queue_wait": {
+        "warmup": {
+          "blocking_checkouts": 10,
+          "timeouts": 0,
+          "wait_p95_seconds": 0.5916257499964559,
+          "wait_max_seconds": 0.6191758750064764,
+          "peak_checked_out": 2
+        },
+        "baseline": {
+          "blocking_checkouts": 40,
+          "timeouts": 0,
+          "wait_p95_seconds": 0.6647373350846465,
+          "wait_max_seconds": 0.7286844580085017,
+          "peak_checked_out": 2
+        },
+        "concurrent": {
+          "blocking_checkouts": 44,
+          "timeouts": 0,
+          "wait_p95_seconds": 0.6653873142757221,
+          "wait_max_seconds": 1.0881545839947648,
+          "peak_checked_out": 2
+        }
+      },
+      "read_p95_seconds": 1.2236605021025753,
+      "concurrent_read_p95_seconds": 1.2257477545063011,
+      "upload_seconds": [
+        1.3116342079883907,
+        0.7464344159816392
+      ],
+      "route_p95_seconds": {
+        "baseline": {
+          "/api/v1/findings": 0.8816365358768963,
+          "/api/v1/analytics/summary": 1.058259434608044,
+          "/api/v1/analytics/trends": 1.2531060124878421,
+          "/api/v1/search": 0.7525790591374971
+        },
+        "concurrent": {
+          "/api/v1/findings": 0.8505493623393704,
+          "/api/v1/analytics/summary": 0.887124635586224,
+          "/api/v1/analytics/trends": 1.2392145561068901,
+          "/api/v1/search": 1.2807610543706687
+        }
+      },
+      "process_max_rss": 214794240,
+      "rss_unit": "bytes"
+    }
+  },
+  "maximum_upload": {
+    "before_batching": {
+      "transport": "HTTP multipart to separate uvicorn process",
+      "worker_processes": 1,
+      "report_bytes": 52428800,
+      "findings": 100000,
+      "uploads": 2,
+      "upload_seconds": [
+        34.65140087500913,
+        20.43803220798145
+      ],
+      "peak_rss_bytes": 1846231040,
+      "client_memory_excluded": true
+    },
+    "after_batching": {
+      "transport": "HTTP multipart to separate uvicorn process",
+      "worker_processes": 1,
+      "report_bytes": 52428800,
+      "findings": 100000,
+      "uploads": 2,
+      "upload_seconds": [
+        37.140933209011564,
+        20.063422166975215
+      ],
+      "peak_rss_bytes": 828620800,
+      "client_memory_excluded": true
+    },
+    "rss_reduction_percent": 55.12,
+    "limitations": "One API process, two sequential uploads, macOS arm64 with PostgreSQL in Docker. RSS includes server startup but excludes client/report construction. Content, parallel uploads and worker count affect real memory requirements; this is not a memory ceiling."
+  },
+  "container_audit": {
+    "scanner": "aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c",
+    "high_or_critical_findings": 0,
+    "previous_unfixed_high_findings_removed": 44,
+    "images": {
+      "backend": {
+        "os": {
+          "Family": "alpine",
+          "Name": "3.24.3"
+        },
+        "image_id": "sha256:558605180e7bac687b0084fdf6293c9675d26a42730bc5725f51c3b1013ff086",
+        "findings_by_severity": {
+          "CRITICAL": 0,
+          "HIGH": 0,
+          "MEDIUM": 10,
+          "LOW": 2,
+          "UNKNOWN": 0
+        }
+      },
+      "frontend": {
+        "os": {
+          "Family": "alpine",
+          "Name": "3.24.2"
+        },
+        "image_id": "sha256:a0df70446df43c9a8d625ce9179f876f29e47d66d01f9f90327f7ad3d43c6db9",
+        "findings_by_severity": {
+          "CRITICAL": 0,
+          "HIGH": 0,
+          "MEDIUM": 1,
+          "LOW": 0,
+          "UNKNOWN": 2
+        }
+      },
+      "database": {
+        "os": {
+          "Family": "alpine",
+          "Name": "3.24.3"
+        },
+        "image_id": "sha256:2ee3f19e19a3a1f3353255e0d17274be30db3012acfeb0eba23678b170c6cbe9",
+        "findings_by_severity": {
+          "CRITICAL": 0,
+          "HIGH": 0,
+          "MEDIUM": 0,
+          "LOW": 0,
+          "UNKNOWN": 0
+        }
+      }
+    },
+    "note": "Lower-severity and unknown findings remain as counted above. Snapshot of vulnerability data at scan time; ongoing dependency/image audits remain necessary."
+  },
+  "operations": "All writes were limited to disposable local databases and staging resources. No production deployment performed."
+}

@@ -36,14 +36,13 @@ def test_a_bulk_update_reads_nothing_more_per_finding(client, auth, db, count_qu
     cost = {}
     for n in (2, 22):
         ids = _findings(db, n, f"asset-{n}")
-        with count_queries() as queries:
+        with count_queries(reads_only=True) as queries:
             r = client.post(
                 "/api/v1/findings/bulk", json={"ids": ids, "status": "in_progress"}, headers=auth["analyst"]
             )
         assert r.status_code == 200 and r.json()["updated"] == n
         cost[n] = queries()
-    per_finding = (cost[22] - cost[2]) / 20
-    assert per_finding <= 4, f"{per_finding:.1f} statements per finding (was 6: two of them were reads)"
+    assert cost[22] <= cost[2] + 1, f"Read queries grew with the batch: {cost}"
 
 
 def test_listing_your_teams_is_not_one_query_per_team(client, auth, db, users, count_queries):

@@ -2263,6 +2263,16 @@
           "event": {
             "$ref": "#/components/schemas/EventType"
           },
+          "from_severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "from_status": {
             "anyOf": [
               {
@@ -2287,6 +2297,16 @@
               }
             ],
             "title": "Scan Id"
+          },
+          "to_severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "to_status": {
             "anyOf": [

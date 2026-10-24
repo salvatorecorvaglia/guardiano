@@ -49,7 +49,7 @@ def summary(db: Session, asset_id: int | None = None, *, scope: Scope) -> dict[s
             f"mttr_{sev}": func.avg(days_expr).filter(resolved, Finding.severity == sev) for sev in SEVERITIES
         },
         "mttr": func.avg(days_expr).filter(resolved),
-        "overdue": func.count().filter(overdue_expr(now)),
+        "overdue": func.count().filter(overdue_expr(now, db=db)),
         "kev": func.count().filter(active, _kev_expr()),
         "new_30d": func.count().filter(Finding.first_seen_at >= since),
         "resolved_30d": func.count().filter(
@@ -85,7 +85,7 @@ def summary(db: Session, asset_id: int | None = None, *, scope: Scope) -> dict[s
 
 
 # Status and severity intervals keep past closures intact when a finding later reopens.
-# Carry sparse status/severity changes with window groups rather than per-event history lookups.
+# Intersect status and severity intervals: two ordered streams avoid re-sorting carried window groups.
 _OPEN_DELTAS_SQL = text(
     """
     WITH scoped AS MATERIALIZED (
@@ -111,32 +111,33 @@ _OPEN_DELTAS_SQL = text(
           s.finding_id IS NOT NULL AS has_status_history
         FROM scoped LEFT JOIN first_status s ON s.finding_id = scoped.id
           LEFT JOIN first_severity v ON v.finding_id = scoped.id
-    ), timeline AS (
-        SELECT id AS finding_id, first_seen_at AS at, -1 AS seq,
-               initial_status AS status, initial_severity AS severity FROM f
+    ), status_timeline AS (
+        SELECT id AS finding_id, first_seen_at AS at, -1 AS seq, initial_status AS status FROM f
         UNION ALL
-        SELECT finding_id, created_at, id, to_status, to_severity FROM history
-        WHERE to_status IS NOT NULL OR to_severity IS NOT NULL
+        SELECT finding_id, created_at, id, to_status FROM history WHERE to_status IS NOT NULL
         UNION ALL
-        SELECT id, closed_at, 2147483647, 'resolved', initial_severity FROM f
+        SELECT id, closed_at, 2147483647, 'resolved' FROM f
         WHERE closed_at IS NOT NULL AND NOT has_status_history
-    ), groups AS (
-        SELECT *, count(status) OVER w AS status_group, count(severity) OVER w AS severity_group
-        FROM timeline
-        WINDOW w AS (PARTITION BY finding_id ORDER BY at, seq ROWS UNBOUNDED PRECEDING)
-    ), carried AS (
-        SELECT finding_id, at, seq,
-          max(status) OVER (PARTITION BY finding_id, status_group) AS status,
-          max(severity) OVER (PARTITION BY finding_id, severity_group) AS severity
-        FROM groups
+    ), severity_timeline AS (
+        SELECT id AS finding_id, first_seen_at AS at, -1 AS seq, initial_severity AS severity FROM f
+        UNION ALL
+        SELECT finding_id, created_at, id, to_severity FROM history WHERE to_severity IS NOT NULL
+    ), status_intervals AS (
+        SELECT *, LEAD(at) OVER (PARTITION BY finding_id ORDER BY at, seq) AS until FROM status_timeline
+    ), severity_intervals AS (
+        SELECT *, LEAD(at) OVER (PARTITION BY finding_id ORDER BY at, seq) AS until FROM severity_timeline
     ), intervals AS (
-        SELECT *, LEAD(at) OVER (PARTITION BY finding_id ORDER BY at, seq) AS until FROM carried
+        SELECT v.severity, GREATEST(s.at, v.at) AS at, LEAST(s.until, v.until) AS until
+        FROM status_intervals s JOIN severity_intervals v USING (finding_id)
+        WHERE s.status IN ('open', 'in_progress')
+          AND (s.until IS NULL OR v.at < s.until)
+          AND (v.until IS NULL OR s.at < v.until)
     ), ev AS (
         SELECT severity, at::date AS day, 1 AS delta FROM intervals
-        WHERE status IN ('open', 'in_progress') AND at::date <= CAST(:end AS date)
+        WHERE at::date <= CAST(:end AS date)
         UNION ALL
         SELECT severity, until::date, -1 FROM intervals
-        WHERE status IN ('open', 'in_progress') AND until::date <= CAST(:end AS date)
+        WHERE until::date <= CAST(:end AS date)
     )
     SELECT GREATEST(day, CAST(:start AS date)) AS day, severity, SUM(delta) AS n
     FROM ev GROUP BY 1, 2
@@ -262,7 +263,9 @@ def trends(db: Session, days: int = 90, asset_id: int | None = None, *, scope: S
     }
 
 
-def top_assets(db: Session, limit: int = 10, *, scope: Scope) -> list[dict[str, Any]]:
+def top_assets(
+    db: Session, limit: int = 10, *, scope: Scope, product_id: int | None = None
+) -> list[dict[str, Any]]:
     score = (func.sum(severity_weight_expr()) * criticality_multiplier_expr()).label("score")
     stmt = (
         select(
@@ -282,6 +285,8 @@ def top_assets(db: Session, limit: int = 10, *, scope: Scope) -> list[dict[str, 
         .order_by(score.desc())
         .limit(limit)
     )
+    if product_id is not None:
+        stmt = stmt.where(Asset.product_id == product_id)
     return [
         {
             "id": r.id,
@@ -428,7 +433,7 @@ def sla_performance(
     """
     now = utcnow()
     since = now - timedelta(days=days)
-    due = sla.sla_due_expr()
+    due = sla.sla_due_expr(db=db)
     has_sla = due.is_not(None)
     active = and_(Finding.status.in_(ACTIVE), has_sla)
     closed = and_(
@@ -595,7 +600,12 @@ def breakdown(db: Session, by: str, days: int = 90, *, scope: Scope) -> list[dic
     resolved = and_(Finding.status == Status.resolved.value, Finding.closed_at >= since)
     first_touch = (
         select(FindingEvent.finding_id, func.min(FindingEvent.created_at).label("at"))
-        .where(FindingEvent.actor_id.is_not(None))
+        .where(
+            FindingEvent.actor_id.is_not(None),
+            FindingEvent.finding_id.in_(
+                scope.narrow(select(Finding.id).where(Finding.first_seen_at >= since), Finding.asset_id)
+            ),
+        )
         .group_by(FindingEvent.finding_id)
         .subquery()
     )
@@ -603,7 +613,7 @@ def breakdown(db: Session, by: str, days: int = 90, *, scope: Scope) -> list[dic
     metrics = [
         func.count().filter(active).label("open"),
         func.count().filter(active, Finding.severity.in_(("critical", "high"))).label("critical_high"),
-        func.count().filter(overdue_expr(now)).label("overdue"),
+        func.count().filter(overdue_expr(now, db=db)).label("overdue"),
         func.count().filter(Finding.status == Status.risk_accepted.value).label("accepted"),
         func.count().filter(resolved).label("resolved"),
         (

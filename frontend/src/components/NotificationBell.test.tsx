@@ -18,6 +18,38 @@ const LIST = {
 };
 
 describe("NotificationBell", () => {
+  it("shows a failed request and retries instead of claiming the inbox is empty", async () => {
+    serveApi({ "/notifications": LIST });
+    const fetch = globalThis.fetch;
+    let fail = true;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => input.endsWith("/notifications") && fail
+      ? Promise.resolve(new Response(JSON.stringify({ detail: "Inbox unavailable" }), { status: 503 }))
+      : fetch(input, init));
+    renderPage(<NotificationBell />);
+    await userEvent.click(await screen.findByRole("button", { name: "Notifications" }));
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Inbox unavailable");
+    expect(screen.queryByText("Nothing new")).toBeNull();
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry notifications" }));
+    expect(await screen.findByText(/Ann mentioned you/)).toBeTruthy();
+  });
+
+  it("keeps failed read operations visible and permits retry", async () => {
+    serveApi({ "/notifications": LIST, "POST /notifications/read": { ...LIST, unread: 0 } });
+    const fetch = globalThis.fetch;
+    let fail = true;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => input.endsWith("/notifications/read") && fail
+      ? Promise.resolve(new Response(JSON.stringify({ detail: "Read failed" }), { status: 503 }))
+      : fetch(input, init));
+    renderPage(<NotificationBell />);
+    await userEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Read failed");
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry marking read" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+
   it("shows the unread count, and opening one marks it read and goes to the finding", async () => {
     const calls = serveApi({ "/notifications": LIST, "POST /notifications/read": { ...LIST, unread: 0 } });
     renderPage(<NotificationBell />, { route: "/", path: "*" });

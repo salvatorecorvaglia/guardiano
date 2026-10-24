@@ -42,7 +42,7 @@ def metrics(request: Request, db: Session = Depends(get_db)) -> Response:
 
 
 @router.get("/api/v1/meta", response_model=Meta)
-def meta():
+def meta(db: Session = Depends(get_db)):
     from app import __version__
     from app.core.config import settings
     from app.parsers.detect import SUPPORTED_FORMATS
@@ -53,7 +53,7 @@ def meta():
         "version": __version__,
         "formats": list(SUPPORTED_FORMATS),
         "max_upload_mb": settings.max_upload_mb,
-        "sla_days": sla.get_policy().default_days(),
+        "sla_days": sla.get_policy(db).default_days(),
         "email_enabled": settings.email_enabled,
         "local_login": settings.local_login,
         "oidc_enabled": settings.oidc_enabled,

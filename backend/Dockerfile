@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim AS builder
-ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+FROM python:3.12-alpine@sha256:b658b05ce9c4eb97ec6fc19424818a1f31993659c2b505a532f470e83807815d AS builder
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_DEFAULT_TIMEOUT=120
 WORKDIR /build
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -10,7 +10,7 @@ ARG INSTALL_DEV=false
 RUN if [ "$INSTALL_DEV" = "true" ]; then LOCK=requirements-dev.lock; else LOCK=requirements.lock; fi \
  && pip install --require-hashes -r "$LOCK"
 
-FROM python:3.12-slim AS runtime
+FROM python:3.12-alpine@sha256:b658b05ce9c4eb97ec6fc19424818a1f31993659c2b505a532f470e83807815d AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
@@ -21,8 +21,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # client address it yields is what the login rate limit and the audit log are keyed on, so trusting
 # every peer would let anyone who reaches this container directly forge both. The bundled stack
 # widens it in docker-compose.yml, where nginx overwrites the header with the real peer address.
-RUN groupadd --system --gid 10001 guardiano \
- && useradd --system --uid 10001 --gid guardiano --home /app --shell /usr/sbin/nologin guardiano \
+RUN addgroup -S -g 10001 guardiano \
+ && adduser -S -D -H -u 10001 -G guardiano -h /app -s /sbin/nologin guardiano \
  && mkdir -p /app && chown guardiano:guardiano /app
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv

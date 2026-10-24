@@ -72,6 +72,7 @@ def _ingest_without_database(data, fmt):
             component_key(clean)
 
 
+@pytest.mark.no_database
 @pytest.mark.parametrize("fmt", list(SAMPLES_BY_FORMAT))
 def test_no_mutation_of_a_report_escapes_as_anything_but_a_parse_error(fmt):
     escaped = []

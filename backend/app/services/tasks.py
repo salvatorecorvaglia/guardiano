@@ -106,7 +106,7 @@ def sla_breaches(db: Session, _: dict[str, Any]) -> None:
     which do not exist when nothing subscribes, so the same findings were re-processed every hour.
     """
     now = utcnow()
-    due = sla_due_expr()
+    due = sla_due_expr(db)
     rows = db.execute(
         select(Finding, due)
         .where(
@@ -228,7 +228,7 @@ def send_email(db: Session, payload: dict[str, Any]) -> None:
 def _digest_rows(db: Session, user: User) -> dict[str, list[dict[str, Any]]]:
     """What one person's digest is about: their findings, and what is overdue or due soon."""
     now = utcnow()
-    due = sla_due_expr()
+    due = sla_due_expr(db)
     mine = (
         scope_for(db, user)
         .narrow(select(Finding), Finding.asset_id)
@@ -382,6 +382,8 @@ def post_scm_feedback(db: Session, payload: dict[str, Any]) -> None:
             return
         asset = db.get(Asset, scan.asset_id)
         if asset is None:
+            return
+        if config.asset_id is not None and config.asset_id != asset.id:
             return
         api = tickets.provider(config.kind)
         data = scm.payload_for(scan, asset)
