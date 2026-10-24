@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-24
+
 ### Added
 
 - Production operations helper for generating configuration with secure defaults,
@@ -20,16 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   startup, MFA, report ingestion, and encrypted restore checks.
 - Release publishing of the container images verified by CI to GitHub Container
   Registry, with image digests attached as `release-images.env`.
+- Reproducible SQL-plan, connection-pool queue-wait and maximum-upload HTTP
+  memory probes under `backend/benchmarks`.
 
 ### Changed
 
 - Ingestion locks only matching, fingerprint and scanner-resolution candidates;
   persistence flushes bounded batches within one atomic transaction.
+- Automatic ticket candidate selection and KEV matching run in SQL, with bounded
+  job creation that preserves the shared per-scan ticket limit.
 - Analytics intersects status and severity intervals to reduce history-query sorts.
 - Backend images use a digest-pinned Alpine runtime to eliminate the previously
   reported Debian high-severity vulnerabilities.
-- Added reproducible SQL-plan, connection-pool queue-wait and maximum-upload HTTP
-  memory probes under `backend/benchmarks`.
 - Enforcing SSO now rejects existing local sessions as well as password sign-ins.
 - Integration destinations with linked tickets or pending work must be replaced
   by a new integration; credentials and operational settings remain editable.
@@ -50,10 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Indexed SARIF artifact locations no longer collapse distinct findings, and
   complete combined reports remove obsolete scanner attribution.
 - MFA management now enforces persistent per-account attempt limits.
+- Ticket creation rechecks integration availability and destination changes;
+  automatic tickets and SCM feedback respect integration asset restrictions.
 - Concurrent product and gate creation, large JSON integers, and disabled manual
   report sends return consistent results instead of errors or false success.
-- Asset drafts stay scoped to their resource, desktop resizing releases mobile
-  focus restrictions, and notifications expose failures and retry actions.
+- Asset, finding, scan and gate-policy pages reset local state when their resource
+  changes, and gate-policy fields are disabled while saving or deleting.
+- Desktop resizing releases mobile focus restrictions, and notifications expose
+  failures and retry actions.
 - Finding history includes severity transitions, and CI examples use the maintained
   action with explicit pull-request previews and quality-gate enforcement.
 
