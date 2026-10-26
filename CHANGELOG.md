@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Updated the frontend runtime's curl and libcurl packages for CVE-2026-92392.
+- CI tears down the container job cleanly when it fails before the disposable
+  production environment is created.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added

@@ -200,7 +200,20 @@ jobs:
           retention-days: 7
       - name: Production stack diagnostics
         if: failure()
-        run: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml logs --tail 100
+        shell: bash
+        run: |
+          if [ ! -f .env.production ]; then
+            echo 'No production env file was created; the stack never started.'
+            exit 0
+          fi
+          docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml logs --tail 100
       - name: Clean up disposable production stack
         if: always()
-        run: docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml down -v
+        shell: bash
+        run: |
+          if [ -f .env.production ]; then
+            docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml down -v
+          else
+            # An earlier step failed, so the stack never started; still clear anything a build left behind.
+            docker compose -f docker-compose.yml down -v
+          fi

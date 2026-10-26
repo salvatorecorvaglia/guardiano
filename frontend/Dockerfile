@@ -16,9 +16,13 @@ COPY . .
 RUN pnpm build
 
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
-# Alpine's fixed Brotli library (CVE-2026-111497); retain the reviewed nginx base.
+# Alpine's fixed Brotli library (CVE-2026-111497) and curl/libcurl (CVE-2026-92392);
+# retain the reviewed nginx base.
 USER root
-RUN apk add --no-cache 'brotli-libs>=1.2.1-r0'
+RUN apk add --no-cache \
+      'brotli-libs>=1.2.1-r0' \
+      'curl>=8.23.0-r0' \
+      'libcurl>=8.23.0-r0'
 ENV BACKEND_URL=http://backend:8000 \
     MAX_UPLOAD_MB=50 \
     REAL_IP_FROM=127.0.0.1/32 \
