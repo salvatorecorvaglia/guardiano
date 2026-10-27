@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI tears down the container job cleanly when it fails before the disposable
   production environment is created.
 
+### Changed
+
+- Update frontend dependencies and Biome to `2.6.3`.
+- Refresh the project logo and README.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
