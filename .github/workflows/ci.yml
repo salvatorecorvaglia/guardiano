@@ -214,6 +214,5 @@ jobs:
           if [ -f .env.production ]; then
             docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml down -v
           else
-            # An earlier step failed, so the stack never started; still clear anything a build left behind.
             docker compose -f docker-compose.yml down -v
           fi
