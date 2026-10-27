@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="resources/guardiano.svg" alt="Guardiano logo" width="96" height="96">
+</p>
+
 # Guardiano
 
 **Self-hosted application vulnerability management platform**

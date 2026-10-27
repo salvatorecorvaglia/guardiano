@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { request } from "../api/typed";
 import { ErrorBox, Field } from "../components/ui";
@@ -27,7 +26,7 @@ export default function ResetPassword() {
     <div className="flex min-h-full items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <ShieldCheck className="h-7 w-7 text-accent" />
+          <img src="/favicon.svg" alt="" className="h-7 w-7" />
           <span className="text-lg font-semibold tracking-tight">Guardiano</span>
         </div>
         <form onSubmit={submit} className="card space-y-4 p-6">

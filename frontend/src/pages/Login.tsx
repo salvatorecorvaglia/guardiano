@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useMeta } from "../api/queries";
 import { request as apiRequest } from "../api/typed";
@@ -93,7 +92,7 @@ export default function Login() {
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <ShieldCheck className="h-10 w-10 text-accent" />
+          <img src="/favicon.svg" alt="" className="h-10 w-10" />
           <h1 className="mt-3 text-2xl font-semibold tracking-tight">
             Guardiano
           </h1>

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Boxes, Bug, FileText, LayoutDashboard, LogOut, Menu, Monitor, Moon, Package, ScanLine, ScrollText, Settings as SettingsIcon, ShieldCheck, Sun, Upload, Users as UsersIcon } from "lucide-react";
+import { Boxes, Bug, FileText, LayoutDashboard, LogOut, Menu, Monitor, Moon, Package, ScanLine, ScrollText, Settings as SettingsIcon, Sun, Upload, Users as UsersIcon } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -103,7 +103,7 @@ export default function Layout() {
   const sidebar = (
     <nav className="flex h-full flex-col gap-1 p-3">
       <div className="mb-4 flex items-center gap-2 px-2 pt-1">
-        <ShieldCheck className="h-6 w-6 text-accent" />
+        <img src="/favicon.svg" alt="" className="h-6 w-6" />
         <span className="text-base font-semibold tracking-tight">Guardiano</span>
       </div>
       {NAV.map(({ to, label, icon: Icon, ...rest }) => (
