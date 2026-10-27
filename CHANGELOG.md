@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add controlled Compose image updates with health checks, a persistent image journal, and recovery to previous images.
+- Require encrypted backup and restore verification before updates; stop writes when schema changes prevent safe image rollback.
+
 ### Fixed
 
 - Updated the frontend runtime's curl and libcurl packages for CVE-2026-92392.

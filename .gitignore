@@ -82,3 +82,6 @@ CLAUDE.md
 *.dump.enc
 *.dump.enc.json
 *.dump.enc.partial
+
+# Local deployment update journal
+.update-state/
