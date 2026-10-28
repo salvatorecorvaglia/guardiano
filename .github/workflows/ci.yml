@@ -140,8 +140,9 @@ jobs:
       - name: Check generated API types
         run: |
           pnpm test:api
+          cp src/api/schema.d.ts "$RUNNER_TEMP/schema.d.ts"
           pnpm gen:api
-          git diff --exit-code -- src/api/schema.d.ts
+          diff -u "$RUNNER_TEMP/schema.d.ts" src/api/schema.d.ts
       - name: Unit tests
         run: pnpm test
       - name: Production build
