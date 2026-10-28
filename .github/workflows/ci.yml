@@ -147,10 +147,11 @@ jobs:
         run: pnpm test
       - name: Production build
         run: pnpm build
+      - name: Restore hosted Python paths inside the container
+        # The runner mounts its tool cache at /__t, but pip shebangs and
+        # Python symlinks can still reference the original host path.
+        run: ln -s /__t /opt/hostedtoolcache
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        env:
-          AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
-          RUNNER_TOOL_CACHE: /opt/hostedtoolcache
         with:
           python-version: '3.12'
           cache: pip
