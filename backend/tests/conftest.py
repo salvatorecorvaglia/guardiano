@@ -1,5 +1,6 @@
 import os
 import re
+from functools import lru_cache
 
 # Configure before the app (and its settings) are imported.
 _base = os.environ.get("DATABASE_URL", "postgresql+psycopg://guardiano:guardiano@localhost:5432/guardiano")
@@ -93,12 +94,26 @@ def client():
         yield c
 
 
-def make_user(db, email: str, role: str):
+@lru_cache(maxsize=128)
+def _fixture_password_hash(email: str) -> str:
+    """Reuse real Argon2 hashes for recurring fixture identities, with one salt per identity.
+
+    Login fixtures still call the real endpoint and verify the password on every test.
+    Tests of hashing, salting, rehashing and password changes call production code directly.
+    """
     from app.core.security import hash_password
+
+    return hash_password(PASSWORD)
+
+
+def make_user(db, email: str, role: str):
     from app.models import User
 
     u = User(
-        email=email, full_name=email.split("@")[0].title(), role=role, password_hash=hash_password(PASSWORD)
+        email=email,
+        full_name=email.split("@")[0].title(),
+        role=role,
+        password_hash=_fixture_password_hash(email),
     )
     db.add(u)
     db.commit()
