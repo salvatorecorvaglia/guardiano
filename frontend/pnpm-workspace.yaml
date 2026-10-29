@@ -10,6 +10,17 @@ minimumReleaseAgeExclude:
   - '@vitest/spy@5.0.5'
   - vitest@5.0.5
   - postcss@8.5.31
+  - '@biomejs/biome@2.6.4'
+  - '@biomejs/cli-android-arm64@2.6.4'
+  - '@biomejs/cli-android-x64@2.6.4'
+  - '@biomejs/cli-darwin-arm64@2.6.4'
+  - '@biomejs/cli-darwin-x64@2.6.4'
+  - '@biomejs/cli-linux-arm64-musl@2.6.4'
+  - '@biomejs/cli-linux-arm64@2.6.4'
+  - '@biomejs/cli-linux-x64-musl@2.6.4'
+  - '@biomejs/cli-linux-x64@2.6.4'
+  - '@biomejs/cli-win32-arm64@2.6.4'
+  - '@biomejs/cli-win32-x64@2.6.4'
 
 overrides:
   typescript: 7.0.2
