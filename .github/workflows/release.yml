@@ -23,29 +23,8 @@ jobs:
           persist-credentials: false
       - name: Check tag matches backend and frontend versions
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          python3 - <<'PY'
-          import ast
-          import json
-          import os
-          import re
-          from pathlib import Path
-
-          tag = os.environ['RELEASE_TAG']
-          if not re.fullmatch(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag):
-              raise SystemExit('Release tags must use vMAJOR.MINOR.PATCH, for example v1.0.0')
-          module = ast.parse(Path('backend/app/__init__.py').read_text())
-          backend = next(
-              ast.literal_eval(node.value)
-              for node in module.body
-              if isinstance(node, ast.Assign)
-              and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets)
-          )
-          frontend = json.loads(Path('frontend/package.json').read_text())['version']
-          if backend != tag[1:] or frontend != tag[1:]:
-              raise SystemExit(f'{tag} does not match backend {backend} and frontend {frontend}')
-          PY
+          RELEASE_REF: ${{ github.ref }}
+        run: python3 scripts/check_versions.py --tag "$RELEASE_REF"
 
   checks:
     name: Release checks

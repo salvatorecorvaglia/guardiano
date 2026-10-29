@@ -48,23 +48,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.lock
       - name: Check backend and frontend versions agree
-        run: |
-          python - <<'PYTHON'
-          import ast
-          import json
-          from pathlib import Path
+        run: python ../scripts/check_versions.py
 
-          module = ast.parse(Path('app/__init__.py').read_text())
-          backend = next(
-              ast.literal_eval(node.value)
-              for node in module.body
-              if isinstance(node, ast.Assign)
-              and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets)
-          )
-          frontend = json.loads(Path('../frontend/package.json').read_text())['version']
-          if backend != frontend:
-              raise SystemExit(f'Version mismatch: backend {backend}, frontend {frontend}')
-          PYTHON
       - name: Install locked dependencies
         run: python -m pip install --require-hashes -r requirements-dev.lock
       - name: Install dependency contract checker
