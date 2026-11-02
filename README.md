@@ -8,7 +8,7 @@
 
 **Guardiano** is a self-hosted application vulnerability management platform. Import reports from your security scanners, bring findings into one inventory, and track triage, ownership, remediation, and accepted risk across applications and teams. It supports SAST, software composition analysis (SCA), infrastructure as code (IaC), and dynamic application security testing (DAST). Run your scanners separately, then upload their results through the web interface or API.
 
-## Features
+## Features ✨
 
 - Centralized findings with deduplication, scan history, comparisons, and automatic reopening and resolution.
 - Assets, products, teams, and access roles: administrator, manager, analyst, and viewer.
@@ -19,7 +19,7 @@
 - Jira, GitHub, and GitLab issue integrations, outbound webhooks, and optional email notifications.
 - Local authentication, two-factor authentication, OpenID Connect SSO, and scoped API tokens.
 
-## Quick start
+## Quick Start 🚀
 
 Install Docker with the Compose plugin, then run these commands from the repository root:
 
@@ -150,8 +150,6 @@ Prometheus metrics are optional and served at `/metrics` on the backend. The bun
 
 The stack uses React 19, TypeScript, and Vite for the frontend; FastAPI, SQLAlchemy, and Alembic for the backend; and PostgreSQL 16 for persistence. A separate worker handles queued jobs and periodic tasks.
 
-The Docker quick start works without installing language dependencies locally. Containers do not mount application source, so rebuild after source changes.
-
 For local tooling, use Python 3.12 or later, Node.js 24, and the pnpm version declared in [frontend/package.json](frontend/package.json).
 
 ### Backend
@@ -234,22 +232,22 @@ docker compose run --rm --no-deps --entrypoint python backend -m app.cli openapi
 
 ---
 
-## 🤝 Contributing
+## Contributing 🤝
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📜 Changelog
+## Changelog 📜
 
 Detailed release history and version changes can be found in [CHANGELOG.md](CHANGELOG.md).
 
-## 🔐 Security
+## Security 🔐
 
 If you discover a security vulnerability, please see our [Security Policy](SECURITY.md).
 
-## 📝 License
+## License 📝
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
----
+## Author ✍️
 
-**Author**: [Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
+[Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
