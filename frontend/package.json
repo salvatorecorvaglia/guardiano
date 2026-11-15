@@ -22,7 +22,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.107.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.72.0",
+    "lucide-react": "^1.73.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -31,8 +31,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@biomejs/biome": "^2.6.7",
-    "@playwright/test": "^1.65.0",
+    "@biomejs/biome": "^2.6.8",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -45,7 +45,7 @@
     "autoprefixer": "^10.6.2",
     "jsdom": "^31.0.1",
     "json-schema-to-typescript": "16.0.0",
-    "postcss": "^8.5.32",
+    "postcss": "^8.5.33",
     "tailwindcss": "^4.3.5",
     "typescript": "7.0.2",
     "vite": "^8.3.8",
