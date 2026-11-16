@@ -1,0 +1,260 @@
+{
+  "date": "2026-11-16",
+  "backend_tests": 895,
+  "frontend_tests": 102,
+  "browser_accessibility_tests": 5,
+  "coverage": {
+    "covered_lines": 9147,
+    "num_statements": 9535,
+    "percent_covered": 94.09631441342667,
+    "percent_covered_display": "94",
+    "missing_lines": 388,
+    "excluded_lines": 0,
+    "percent_statements_covered": 95.93078133193498,
+    "percent_statements_covered_display": "96",
+    "num_branches": 2322,
+    "num_partial_branches": 290,
+    "covered_branches": 2010,
+    "missing_branches": 312,
+    "percent_branches_covered": 86.56330749354005,
+    "percent_branches_covered_display": "87"
+  },
+  "dependency_audits": {
+    "python": "passed",
+    "frontend_production": "passed"
+  },
+  "production": {
+    "builds": [
+      "backend",
+      "frontend",
+      "database"
+    ],
+    "smoke": "passed",
+    "encrypted_restore_application_mfa_inventory": "passed"
+  },
+  "sso_rehearsal": {
+    "status": "passed",
+    "legacy_sso_sessions_revoked": true,
+    "unbound_sso_refused": true,
+    "explicit_issuer_binding_idempotent": true,
+    "replacement_issuer_refused": true,
+    "restored_readiness_and_local_recovery_login": true,
+    "rollback_recovery_credentials_verified": true,
+    "backup_bytes": 121524,
+    "counts_preserved": {
+      "acceptance_requests": 0,
+      "api_tokens": 0,
+      "assets": 1,
+      "audit_log": 0,
+      "component_scans": 1,
+      "components": 1,
+      "finding_events": 1,
+      "finding_links": 0,
+      "finding_scans": 1,
+      "findings": 1,
+      "gate_policies": 0,
+      "integrations": 0,
+      "jobs": 0,
+      "kev_announcements": 0,
+      "license_policies": 0,
+      "notifications": 0,
+      "oidc_states": 0,
+      "password_resets": 0,
+      "periodic_tasks": 0,
+      "pr_comments": 0,
+      "products": 0,
+      "recovery_codes": 0,
+      "refresh_sessions": 0,
+      "report_schedules": 0,
+      "revoked_tokens": 0,
+      "saved_views": 0,
+      "scans": 1,
+      "sla_policies": 0,
+      "team_members": 0,
+      "teams": 0,
+      "ticket_operations": 0,
+      "triage_rules": 0,
+      "users": 2,
+      "vuln_aliases": 0,
+      "vuln_intel": 0,
+      "webhook_deliveries": 0,
+      "webhooks": 0
+    },
+    "identifiers_preserved": {
+      "user": 1,
+      "asset": 1,
+      "scan": 1,
+      "finding": 1,
+      "component": 1
+    },
+    "component_identity_upgraded": true,
+    "scan_memberships_preserved": true,
+    "repeated_upgrade_passed": true,
+    "legacy_backup_restored_for_rollback": true,
+    "databases_kept": false
+  },
+  "image_audits": [
+    {
+      "image": "backend",
+      "image_id": "sha256:014761be96fc9a3b69e63dab29f34455003c736feb7a48315120250f13ba5ddc",
+      "critical": 0,
+      "high": 0,
+      "report_created_at": "2026-11-16T08:16:31.905580461Z"
+    },
+    {
+      "image": "frontend",
+      "image_id": "sha256:dc19fb351fa2dc01cc683509e967add0f893abf0c50f23d1aafce9dff9b6c0d8",
+      "critical": 0,
+      "high": 0,
+      "report_created_at": "2026-11-16T08:16:32.460402836Z"
+    },
+    {
+      "image": "database",
+      "image_id": "sha256:916572f3dc803a332c9a0bd2266c0b532f96ce326326f3065f18bdf280422b8e",
+      "critical": 0,
+      "high": 0,
+      "report_created_at": "2026-11-16T08:16:33.802499795Z"
+    }
+  ],
+  "mixed_workload": {
+    "baseline_source": "git HEAD backend snapshot before Phases 1\u20135; read-only git archive",
+    "runtime": "Same clean Python 3.12 environment and locked dependencies for both versions",
+    "isolation": "Sequential fresh databases after builds/scans/tests and disposable production stack stopped",
+    "baseline": {
+      "seeded_findings": 100000,
+      "read_workload": "mixed",
+      "transport": "in-process",
+      "benchmark_runtime_versions": {
+        "python": "3.12.13",
+        "fastapi": "0.163.1",
+        "sqlalchemy": "2.1.8"
+      },
+      "history_rows": 275000,
+      "upload_target": "same-populated-asset",
+      "read_routes": [
+        "/api/v1/findings",
+        "/api/v1/analytics/summary",
+        "/api/v1/analytics/trends",
+        "/api/v1/search"
+      ],
+      "upload_findings_each": 1000,
+      "concurrent_uploads": 2,
+      "pool_queue_wait": {
+        "warmup": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "baseline": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "concurrent": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        }
+      },
+      "read_p95_seconds": 0.8829417326967814,
+      "concurrent_read_p95_seconds": 0.9050081806075468,
+      "upload_seconds": [
+        0.6077328339888481,
+        0.8636960000003455
+      ],
+      "route_p95_seconds": {
+        "baseline": {
+          "/api/v1/findings": 0.26584309504396514,
+          "/api/v1/analytics/summary": 0.44213489359390223,
+          "/api/v1/analytics/trends": 0.8886881144084328,
+          "/api/v1/search": 0.0994291500050167
+        },
+        "concurrent": {
+          "/api/v1/findings": 0.24162401264693473,
+          "/api/v1/analytics/summary": 0.45388425754063066,
+          "/api/v1/analytics/trends": 0.9556670346006285,
+          "/api/v1/search": 0.11958290944603504
+        }
+      },
+      "process_max_rss": 209993728,
+      "rss_unit": "bytes"
+    },
+    "final": {
+      "seeded_findings": 100000,
+      "read_workload": "mixed",
+      "transport": "in-process",
+      "benchmark_runtime_versions": {
+        "python": "3.12.13",
+        "fastapi": "0.163.1",
+        "sqlalchemy": "2.1.8"
+      },
+      "history_rows": 275000,
+      "upload_target": "same-populated-asset",
+      "read_routes": [
+        "/api/v1/findings",
+        "/api/v1/analytics/summary",
+        "/api/v1/analytics/trends",
+        "/api/v1/search"
+      ],
+      "upload_findings_each": 1000,
+      "concurrent_uploads": 2,
+      "pool_queue_wait": {
+        "warmup": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "baseline": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        },
+        "concurrent": {
+          "blocking_checkouts": 0,
+          "timeouts": 0,
+          "wait_p95_seconds": 0,
+          "wait_max_seconds": 0,
+          "peak_checked_out": 6
+        }
+      },
+      "read_p95_seconds": 0.8818630806039437,
+      "concurrent_read_p95_seconds": 0.8744208476033236,
+      "upload_seconds": [
+        0.8231424999976298,
+        0.5924465419957414
+      ],
+      "route_p95_seconds": {
+        "baseline": {
+          "/api/v1/findings": 0.27285135452257236,
+          "/api/v1/analytics/summary": 0.45453858124601537,
+          "/api/v1/analytics/trends": 0.9482078081673535,
+          "/api/v1/search": 0.09329692006285768
+        },
+        "concurrent": {
+          "/api/v1/findings": 0.34166655915105365,
+          "/api/v1/analytics/summary": 0.4337618268888036,
+          "/api/v1/analytics/trends": 0.9021475876390468,
+          "/api/v1/search": 0.10913799665650004
+        }
+      },
+      "process_max_rss": 210468864,
+      "rss_unit": "bytes"
+    },
+    "p95_ratios": {
+      "read_p95_seconds": 0.9987783428363464,
+      "concurrent_read_p95_seconds": 0.9662021474947448
+    },
+    "max_allowed_ratio": 1.1,
+    "status": "passed"
+  }
+}

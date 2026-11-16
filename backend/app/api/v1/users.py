@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select, text
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,14 +10,50 @@ from app.core.deps import admin_only, require
 from app.core.security import hash_password
 from app.models import User
 from app.models.enums import Role
+from app.schemas.common import PickerPage
 from app.schemas.user import UserBrief, UserCreate, UserOut, UserUpdate
 from app.services import audit
+from app.services.queries import like_pattern
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 def _active_admins(db: Session) -> int:
     return db.scalar(select(func.count()).where(User.role == Role.admin.value, User.is_active.is_(True))) or 0
+
+
+@router.get("/directory/search", response_model=PickerPage[UserBrief])
+def search_directory(
+    q: str = Query("", max_length=200),
+    selected_id: int | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    _: User = Depends(require(Role.viewer)),
+    db: Session = Depends(get_db),
+):
+    stmt = select(User).where(User.is_active.is_(True))
+    if q.strip():
+        pattern = like_pattern(q.strip())
+        stmt = stmt.where(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    selected = (
+        db.scalar(select(User).where(User.id == selected_id, User.is_active.is_(True)))
+        if selected_id is not None
+        else None
+    )
+    rows = db.scalars(
+        stmt.order_by(User.full_name, User.email, User.id).offset((page - 1) * page_size).limit(page_size)
+    ).all()
+    return PickerPage(items=rows, selected=selected, total=total, page=page, page_size=page_size)
+
+
+@router.get("/directory/lookup", response_model=list[UserBrief])
+def lookup_directory(
+    ids: Annotated[list[int] | None, Query(max_length=500)] = None,
+    _: User = Depends(require(Role.viewer)),
+    db: Session = Depends(get_db),
+):
+    return db.scalars(select(User).where(User.id.in_(ids), User.is_active.is_(True))).all() if ids else []
 
 
 @router.get("/directory", response_model=list[UserBrief])

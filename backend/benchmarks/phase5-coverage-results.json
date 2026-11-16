@@ -1,0 +1,23 @@
+{
+  "baseline_sha256": "d342528b5595e7e6a3fa790c76888c0a284202eaadaf1a5781481e36d62298bc",
+  "python": "3.12.13",
+  "sqlalchemy": "2.1.8",
+  "assets": 10000,
+  "scans": 6000,
+  "components": 1000,
+  "returned_limit": 200,
+  "payload_parity": true,
+  "iterations": 20,
+  "scope": "global",
+  "before": {
+    "median_seconds": 0.020684687500761356,
+    "p95_seconds": 0.032947772949410134,
+    "python_peak_bytes": 4239332
+  },
+  "after": {
+    "median_seconds": 0.008059311992838047,
+    "p95_seconds": 0.009880821449769428,
+    "python_peak_bytes": 208599
+  },
+  "p95_ratio": 0.2998934545573383
+}

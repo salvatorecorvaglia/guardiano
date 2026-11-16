@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.common import ORMModel
 from app.schemas.user import UserBrief
@@ -8,10 +8,17 @@ class TeamCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100, pattern=r"^[\w.\-/ @]+$")
     description: str = Field("", max_length=1000)
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
 
 class TeamUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100, pattern=r"^[\w.\-/ @]+$")
     description: str | None = Field(None, max_length=1000)
+
+    _strip_name = field_validator("name", mode="before")(TeamCreate.strip_name.__func__)
 
     @model_validator(mode="after")
     def required_values(self):

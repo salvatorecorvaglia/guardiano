@@ -57,3 +57,44 @@ describe("AcceptanceCard", () => {
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
   });
 });
+
+it("shows lookup failures and retries before offering a new request", async () => {
+  serveApi({ "/acceptance-requests": [] });
+  const fallback = globalThis.fetch;
+  let failing = true;
+  vi.stubGlobal("fetch", vi.fn((input: string, init?: RequestInit) =>
+    input.includes("/acceptance-requests") && failing
+      ? Promise.resolve(new Response(JSON.stringify({ detail: "Acceptance lookup unavailable" }), { status: 400 }))
+      : fallback(input, init)));
+  renderPage(<AcceptanceCard findingId={9} status="open" />);
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Acceptance lookup unavailable");
+  expect(screen.queryByRole("button", { name: /Request risk acceptance/ })).toBeNull();
+  failing = false;
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(await screen.findByRole("button", { name: /Request risk acceptance/ })).toBeTruthy();
+});
+
+it("prevents duplicate requests and keeps a pending request dialog open", async () => {
+  serveApi({ "/acceptance-requests": [] });
+  const fallback = globalThis.fetch;
+  let release!: (response: Response) => void;
+  let submissions = 0;
+  vi.stubGlobal("fetch", vi.fn((input: string, init?: RequestInit) => {
+    if (init?.method === "POST" && input.includes("/findings/9/acceptance-requests")) {
+      submissions += 1;
+      return new Promise<Response>((resolve) => { release = resolve; });
+    }
+    return fallback(input, init);
+  }));
+  renderPage(<AcceptanceCard findingId={9} status="open" />);
+  await userEvent.click(await screen.findByRole("button", { name: /Request risk acceptance/ }));
+  await userEvent.type(screen.getByRole("textbox"), "Compensating controls");
+  await userEvent.dblClick(screen.getByRole("button", { name: "Send request" }));
+  expect(screen.getByRole("button", { name: "Sending…" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
+  await userEvent.keyboard("{Escape}");
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(submissions).toBe(1);
+  release(new Response(JSON.stringify(REQUEST), { status: 200 }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});

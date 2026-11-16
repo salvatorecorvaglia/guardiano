@@ -66,7 +66,9 @@ jobs:
           python -m app.cli openapi - > "$RUNNER_TEMP/openapi.json"
           diff -u ../frontend/src/api/openapi.json "$RUNNER_TEMP/openapi.json"
       - name: Test with coverage
-        run: pytest --durations=30 --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=junit.xml
+        run: pytest --durations=30 --cov=app --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=json:coverage.json --junitxml=junit.xml
+      - name: Enforce line and branch coverage
+        run: python check_coverage.py
       - name: Retain test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -74,6 +76,7 @@ jobs:
           name: backend-results
           path: |
             backend/coverage.xml
+            backend/coverage.json
             backend/junit.xml
           retention-days: 7
 
@@ -81,7 +84,7 @@ jobs:
     name: Frontend and browser tests
     runs-on: ubuntu-24.04
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
       options: --ipc=host
     timeout-minutes: 20
     defaults:
@@ -145,7 +148,7 @@ jobs:
           python -m venv .venv
           .venv/bin/python -m pip install --require-hashes -r requirements-dev.lock
       - name: Check Playwright matches the browser image
-        run: test "$(node -p 'require("@playwright/test/package.json").version')" = "1.64.1"
+        run: test "$(node -p 'require("@playwright/test/package.json").version')" = "1.65.1"
       - name: Browser and accessibility tests
         run: pnpm test:browser
       - name: Retain failed browser traces

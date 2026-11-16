@@ -16,6 +16,7 @@ that is simply down, or private DNS the API container cannot see, is not an atta
 
 import ipaddress
 import socket
+import zlib
 from contextlib import contextmanager
 from urllib.parse import urlsplit
 
@@ -53,7 +54,9 @@ class GuardedBackend(httpcore.SyncBackend):
 def guarded_client(**kwargs) -> httpx.Client:
     transport = httpx.HTTPTransport()
     transport._pool._network_backend = GuardedBackend()
-    return httpx.Client(transport=transport, trust_env=False, **kwargs)
+    headers = httpx.Headers(kwargs.pop("headers", None))
+    headers.setdefault("Accept-Encoding", "gzip, deflate")
+    return httpx.Client(transport=transport, trust_env=False, headers=headers, **kwargs)
 
 
 @contextmanager
@@ -125,15 +128,39 @@ def read_capped(response: httpx.Response, limit: int) -> bytes:
     """Read a *streamed* response body, refusing more than ``limit`` bytes.
 
     ``response.content`` on a non-streamed request buffers whatever the server chooses to send, and
-    every URL these callers use is one an operator typed in. The count is taken after transport
-    decoding, so a gzip-encoded response that inflates past the limit is refused too.
+    every URL these callers use is one an operator typed in. Both encoded and decoded bodies
+    are capped. gzip and deflate decoding allocates at most the remaining budget plus one byte.
     """
     declared = response.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > limit:
         raise TooLarge(f"response of {int(declared)} bytes exceeds the {limit}-byte limit")
+    # Mock/preloaded responses have already been decoded by httpx.
+    if response.is_stream_consumed:
+        if len(response.content) > limit:
+            raise TooLarge("Decoded response exceeds the size limit")
+        return response.content
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    if encoding not in {"identity", "gzip", "deflate"}:
+        raise ValueError("Unsupported response content encoding")
+    decoder = zlib.decompressobj(31 if encoding == "gzip" else 15) if encoding != "identity" else None
     body = bytearray()
-    for chunk in response.iter_bytes():
-        body += chunk
-        if len(body) > limit:
-            raise TooLarge(f"response exceeds the {limit}-byte limit")
+    encoded = 0
+    try:
+        for chunk in response.iter_raw(chunk_size=65536):
+            encoded += len(chunk)
+            if encoded > limit:
+                raise TooLarge("Encoded response exceeds the size limit")
+            if decoder is not None:
+                chunk = decoder.decompress(chunk, limit - len(body) + 1)
+                if decoder.unconsumed_tail:
+                    raise TooLarge("Decoded response exceeds the size limit")
+                if decoder.unused_data:
+                    raise ValueError("Trailing compressed response data")
+            if len(chunk) > limit - len(body):
+                raise TooLarge("Decoded response exceeds the size limit")
+            body.extend(chunk)
+        if decoder is not None and not decoder.eof:
+            raise ValueError("Truncated compressed response")
+    except zlib.error as exc:
+        raise ValueError("Invalid compressed response") from exc
     return bytes(body)

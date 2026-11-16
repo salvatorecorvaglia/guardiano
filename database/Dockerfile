@@ -2,7 +2,7 @@
 FROM postgres:16-alpine@sha256:deb28ee471183cb0c303113dac9b2433c51eeeeb678def7af9a9ec5820367815
 # Upstream gosu embeds an obsolete Go runtime. Use Alpine's native C helper for
 # the entrypoint's only privilege-drop invocation and remove both upstream aliases.
-RUN apk add --no-cache su-exec \
+RUN apk add --no-cache su-exec 'krb5-libs>=1.22.3-r0' 'libxslt>=1.1.43-r4' \
     && test -x /sbin/su-exec \
     && rm /usr/local/bin/gosu /usr/local/bin/su-exec \
     && sed -i 's/exec gosu postgres /exec \/sbin\/su-exec postgres /' /usr/local/bin/docker-entrypoint.sh \

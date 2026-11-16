@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Paginated asset and user search APIs, selected-item lookup, and searchable
+  selectors that retain selected identities across searches and respect asset visibility.
+- `bind-oidc-identities --legacy-issuer` for explicitly binding existing SSO
+  accounts to their original identity provider after migration.
+- `check-asset-names` to report legacy asset-name collisions without merging histories.
+- Backend line and branch coverage enforcement at 80%, coverage benchmarks, and
+  expanded upgrade rehearsals for SSO migration and local administrator recovery.
+
+### Changed
+
+- Bind SSO identities to both issuer and subject, validate provider discovery,
+  token, key-set and identity fields, and reject unbound legacy identities.
+  Existing SSO installations must apply migrations and run
+  `bind-oidc-identities --legacy-issuer` with the original trusted issuer before
+  resuming SSO traffic; previous sessions are revoked. Rollback requires restoring
+  a verified backup.
+- Calculate coverage totals and the bounded uncovered-asset list in SQL from one
+  database snapshot instead of loading the full asset inventory.
+- Refresh application dependencies, lockfiles, tooling and CI browser images,
+  and update backend, frontend and database runtime packages.
+
+### Fixed
+
+- Apply consistent trimmed, case-insensitive asset-name matching across creation,
+  renaming and ingestion; serialize concurrent creation and reject ambiguous
+  legacy names with HTTP 409 instead of selecting an arbitrary asset.
+- Align scan preview details, severity counts and quality gates with auto-triage
+  and persisted finding transitions. Preserve `scanner_severity` and report
+  `would_resolve` counts without changing inventory.
+- Bound both compressed and decoded external response bodies, reject malformed
+  encodings, and return controlled errors for invalid identity-provider and tracker
+  responses without exposing response bodies.
+- Serialize concurrent SLA policy replacements to preserve atomic changes and
+  accurate audit records.
+- Clean up expired password-reset credentials even when history retention is
+  disabled, draining worker backlogs in transactions of at most 1,000 records.
+- Show risk-acceptance lookup failures with a retry action and prevent edits or
+  modal dismissal while an acceptance request is being submitted.
+
 ## [1.2.0] - 2026-10-28
 
 ### Added

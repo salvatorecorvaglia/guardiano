@@ -52,6 +52,15 @@ export default function AcceptanceCard({ findingId, status }: { findingId: numbe
     },
   });
 
+  if (pending.isError) return (
+    <div className="space-y-2">
+      <ErrorBox error={pending.error} />
+      <button className="btn-secondary" disabled={pending.isFetching} onClick={() => void pending.refetch()}>
+        {pending.isFetching ? "Retrying…" : "Retry"}
+      </button>
+    </div>
+  );
+
   const req = pending.data?.[0];
   if (req) {
     const mine = req.requested_by?.id === user?.id;
@@ -96,15 +105,15 @@ export default function AcceptanceCard({ findingId, status }: { findingId: numbe
       </button>
       <Modal
         open={asking}
-        onClose={() => setAsking(false)}
+        onClose={() => { if (!ask.isPending) setAsking(false); }}
         title="Request risk acceptance"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setAsking(false)}>
+            <button className="btn-secondary" disabled={ask.isPending} onClick={() => setAsking(false)}>
               Cancel
             </button>
             <button className="btn-primary" disabled={!justification.trim() || ask.isPending} onClick={() => ask.mutate()}>
-              Send request
+              {ask.isPending ? "Sending…" : "Send request"}
             </button>
           </>
         }
@@ -112,13 +121,14 @@ export default function AcceptanceCard({ findingId, status }: { findingId: numbe
         <Field label="Why the risk can be accepted" hint="Recorded on the finding, and shown to whoever decides">
           <textarea
             className="input min-h-[80px]"
+            disabled={ask.isPending}
             maxLength={5000}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
           />
         </Field>
         <Field label="Until" hint="When the acceptance ends and the finding reopens">
-          <input className="input w-auto" type="date" aria-label="Accepted until" value={until} onChange={(e) => setUntil(e.target.value)} />
+          <input className="input w-auto" type="date" disabled={ask.isPending} aria-label="Accepted until" value={until} onChange={(e) => setUntil(e.target.value)} />
         </Field>
         <ErrorBox error={ask.error} />
       </Modal>

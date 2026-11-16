@@ -1,7 +1,8 @@
+import AsyncPicker from "./AsyncPicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListChecks, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useAssetOptions, useDirectory } from "../api/queries";
+
 import { request } from "../api/typed";
 import type { Criticality, RuleAction, RuleMatch, Severity, TriagePreview, TriageRule } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -54,8 +55,8 @@ function RuleForm({ rule, onClose }: { rule?: TriageRule; onClose: () => void })
   const canGlobal = can("admin");
   const qc = useQueryClient();
   const toast = useToast();
-  const assets = useAssetOptions();
-  const directory = useDirectory();
+
+
   const [draft, setDraft] = useState<Draft>(rule ? toDraft(rule) : EMPTY);
   const [preview, setPreview] = useState<TriagePreview | null>(null);
   const setMatch = (patch: Partial<RuleMatch>) => setDraft({ ...draft, match: { ...draft.match, ...patch } });
@@ -117,16 +118,7 @@ function RuleForm({ rule, onClose }: { rule?: TriageRule; onClose: () => void })
           <input className="input" value={draft.name} maxLength={200} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ignore test fixtures" />
         </Field>
         <Field label="Applies to">
-          <select className="input" value={draft.asset_id} onChange={(e) => setDraft({ ...draft, asset_id: e.target.value })}>
-            <option value="" disabled={!canGlobal}>
-              {canGlobal ? "Every asset" : "Every asset (administrators only)"}
-            </option>
-            {assets.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AsyncPicker kind="assets" label="Applies to" value={draft.asset_id} emptyLabel={canGlobal ? "Every asset" : "Every asset (administrators only)"} emptyDisabled={!canGlobal} onChange={(value) => setDraft({ ...draft, asset_id: value })} />
         </Field>
       </div>
 
@@ -263,14 +255,7 @@ function RuleForm({ rule, onClose }: { rule?: TriageRule; onClose: () => void })
             </select>
           </Field>
           <Field label="Assign to">
-            <select className="input" value={draft.action.assignee_id ?? ""} onChange={(e) => setAction({ assignee_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">Nobody</option>
-              {directory.data?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.email}
-                </option>
-              ))}
-            </select>
+            <AsyncPicker kind="users" label="Assign to" value={String(draft.action.assignee_id ?? "")} emptyLabel="Nobody" onChange={(value) => setAction({ assignee_id: value ? Number(value) : null })} />
           </Field>
           <Field label="Tags" hint="Comma separated">
             <input

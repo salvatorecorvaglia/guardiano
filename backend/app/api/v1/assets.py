@@ -13,10 +13,11 @@ from app.core.deps import get_scope, require
 from app.models import Asset, Component, Finding, Product, Scan, Team, User
 from app.models.enums import Role
 from app.schemas.asset import AssetCreate, AssetOut, AssetSummary, AssetUpdate, SeverityCounts
-from app.schemas.common import Page
+from app.schemas.common import Page, PickerPage
 from app.schemas.component import ComponentOut, VexImportResult
 from app.schemas.scan import AssetRef
 from app.services import audit, licenses, sbom, vex
+from app.services.asset_names import ensure_available
 from app.services.queries import ACTIVE, criticality_multiplier_expr, like_pattern, severity_weight_expr
 from app.services.scope import Scope
 
@@ -113,6 +114,36 @@ def summarize(db: Session, assets: list[Asset]) -> list[AssetSummary]:
     return [_to_summary(rows[a.id]) for a in assets]
 
 
+@router.get("/options/search", response_model=PickerPage[AssetRef])
+def search_asset_options(
+    q: str = Query("", max_length=200),
+    selected_id: int | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    _: User = Depends(require(Role.viewer)),
+    scope: Scope = Depends(get_scope),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Asset.id, Asset.name).where(scope.assets())
+    if q.strip():
+        stmt = stmt.where(Asset.name.ilike(like_pattern(q.strip())))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    selected = (
+        db.execute(
+            select(Asset.id, Asset.name).where(
+                Asset.id == selected_id,
+                scope.assets(),
+            )
+        ).first()
+        if selected_id is not None
+        else None
+    )
+    rows = db.execute(
+        stmt.order_by(func.lower(Asset.name), Asset.id).offset((page - 1) * page_size).limit(page_size)
+    ).all()
+    return PickerPage(items=rows, selected=selected, total=total, page=page, page_size=page_size)
+
+
 @router.get("/options", response_model=list[AssetRef])
 def asset_options(
     _: User = Depends(require(Role.viewer)),
@@ -176,6 +207,7 @@ def create_asset(
         if user.role != Role.admin.value:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an administrator can put an asset in a team")
         _check_team(db, body.team_id)
+    ensure_available(db, body.name)
     asset = Asset(**body.model_dump(mode="json"))
     db.add(asset)
     try:
@@ -225,6 +257,8 @@ def update_asset(
 ):
     asset = _get(db, asset_id, scope)
     changes = body.model_dump(exclude_unset=True, mode="json")
+    if "name" in changes:
+        ensure_available(db, changes["name"], asset.id)
     _check_product(db, changes.get("product_id"))
     if "default_assignee_id" in changes:
         _check_assignee(db, changes["default_assignee_id"])

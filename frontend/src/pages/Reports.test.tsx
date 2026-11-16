@@ -12,7 +12,7 @@ afterEach(() => {
 // Only what these tests read. The report itself is left unserved: they are about which requests the
 // filters produce, and the page shows its error box for the rest.
 function serve() {
-  return serveApi({ "/assets/options": [{ id: 3, name: "payments-api" }], "/analytics/top": [] });
+  return serveApi({ "/assets/options/search": { items: [{ id: 3, name: "payments-api" }], selected: { id: 3, name: "payments-api" }, total: 1, page: 1, page_size: 50 }, "/analytics/top": [] });
 }
 
 describe("Reports", () => {

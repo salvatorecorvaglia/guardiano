@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, CircleDot, ExternalLink, Eye, Gauge, MessageSquare, RotateCcw, ScanLine, ShieldQuestion, Sparkles, Tag, UserPlus, Wand2 } from "lucide-react";
+import { CheckCircle2, ExternalLink } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { invalidateAfterTriage, useDirectory } from "../api/queries";
+import { invalidateAfterTriage } from "../api/queries";
 import { request } from "../api/typed";
-import type { FindingDetail as FD, FindingEvent, FindingUpdate, Severity } from "../api/types";
+import type { FindingDetail as FD, FindingUpdate, Severity } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import FindingHistory from "../components/findings/FindingHistory";
+import AsyncPicker from "../components/AsyncPicker";
 import AcceptanceCard from "../components/AcceptanceCard";
 import DueDateDialog, { type DueChange } from "../components/DueDateDialog";
 import ExploitBadge from "../components/ExploitBadge";
@@ -34,92 +36,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-// Mirrors services/notifications.py MENTION: "@someone@example.com" notifies that person.
-const MENTION = /(?<![\w.+-])(@[\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g;
-
-function withMentions(text: string): ReactNode[] {
-  return text.split(MENTION).map((part, i) =>
-    i % 2 === 1 ? (
-      <span key={i} className="rounded bg-accent/10 px-0.5 font-medium text-accent">
-        {part}
-      </span>
-    ) : (
-      part
-    ),
-  );
-}
-
 const cweUrl = (c: string) => `https://cwe.mitre.org/data/definitions/${c.replace("CWE-", "")}.html`;
 const safeUrl = (u?: string | null) => (u && /^https?:\/\//i.test(u) ? u : undefined);
-
-const EVENT_ICON: Record<string, ReactNode> = {
-  created: <ScanLine className="h-3.5 w-3.5" />,
-  reopened: <RotateCcw className="h-3.5 w-3.5" />,
-  auto_resolved: <Wand2 className="h-3.5 w-3.5" />,
-  status_changed: <CircleDot className="h-3.5 w-3.5" />,
-  assigned: <UserPlus className="h-3.5 w-3.5" />,
-  comment: <MessageSquare className="h-3.5 w-3.5" />,
-  seen_again: <Eye className="h-3.5 w-3.5" />,
-  no_longer_reported: <Wand2 className="h-3.5 w-3.5" />,
-  rule_applied: <Sparkles className="h-3.5 w-3.5" />,
-  tags_changed: <Tag className="h-3.5 w-3.5" />,
-  due_date_changed: <CalendarClock className="h-3.5 w-3.5" />,
-  severity_changed: <Gauge className="h-3.5 w-3.5" />,
-  acceptance_requested: <ShieldQuestion className="h-3.5 w-3.5" />,
-  acceptance_rejected: <ShieldQuestion className="h-3.5 w-3.5" />,
-};
-
-// Events whose whole message is in the comment, shown inline rather than as a quote.
-const INLINE_COMMENT = new Set([
-  "assigned", "tags_changed", "due_date_changed", "severity_changed", "acceptance_requested", "acceptance_rejected",
-]);
-
-function eventText(e: FindingEvent) {
-  const who = e.actor ? e.actor.full_name || e.actor.email : "Guardiano";
-  switch (e.event) {
-    case "created":
-      return <>Finding first detected{e.scan_id ? ` in scan #${e.scan_id}` : ""}</>;
-    case "reopened":
-      return <>Reopened automatically{e.scan_id ? ` by scan #${e.scan_id}` : ""}</>;
-    case "auto_resolved":
-      return <>Resolved automatically - no longer reported</>;
-    case "status_changed":
-      return (
-        <>
-          <span className="font-medium">{who}</span> changed status {e.from_status && <>from {STATUS_LABEL[e.from_status]} </>}
-          to <span className="font-medium">{e.to_status && STATUS_LABEL[e.to_status]}</span>
-        </>
-      );
-    case "no_longer_reported":
-      return <>Dropped by a scanner{e.scan_id ? ` in scan #${e.scan_id}` : ""}</>;
-    case "rule_applied":
-      return (
-        <>
-          Auto-triage rule applied{e.to_status && <> · status {STATUS_LABEL[e.to_status]}</>}
-        </>
-      );
-    case "assigned":
-    case "tags_changed":
-    case "due_date_changed":
-    case "acceptance_requested":
-    case "acceptance_rejected":
-      return (
-        <>
-          <span className="font-medium">{who}</span>: {e.comment}
-        </>
-      );
-    case "severity_changed":
-      return <><span className="font-medium">{who}</span>: {e.comment || `Severity changed from ${e.from_severity ?? "unknown"} to ${e.to_severity ?? "unknown"}`}</>;
-    case "comment":
-      return (
-        <>
-          <span className="font-medium">{who}</span> commented
-        </>
-      );
-    default:
-      return e.event;
-  }
-}
 
 export default function FindingDetail() {
   const { id } = useParams();
@@ -133,7 +51,6 @@ function FindingDetailPage() {
   const backTo = (location.state as { from?: string } | null)?.from ?? "/findings";
   const qc = useQueryClient();
   const { can } = useAuth();
-  const directory = useDirectory();
   const toast = useToast();
   const [statusOpen, setStatusOpen] = useState(false);
   const [dueOpen, setDueOpen] = useState(false);
@@ -208,19 +125,9 @@ function FindingDetailPage() {
         </div>
         {can("analyst") && (
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              className="input w-auto"
-              value={f.assignee?.id ?? ""}
-              onChange={(e) => patch.mutate(e.target.value ? { assignee_id: Number(e.target.value) } : { unassign: true })}
-              aria-label="Assignee"
-            >
-              <option value="">Unassigned</option>
-              {directory.data?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.email}
-                </option>
-              ))}
-            </select>
+            <AsyncPicker kind="users" label="Assignee" value={String(f.assignee?.id ?? "")} emptyLabel="Unassigned"
+              disabled={patch.isPending} selectedOption={f.assignee ? { id: f.assignee.id, name: f.assignee.full_name || f.assignee.email } : undefined}
+              onChange={(value) => patch.mutate(value ? { assignee_id: Number(value) } : { unassign: true })} />
             {f.status !== "resolved" && (
               <button className="btn-secondary" onClick={() => patch.mutate({ status: "resolved" })} disabled={patch.isPending}>
                 <CheckCircle2 className="h-4 w-4" /> Resolve
@@ -348,24 +255,7 @@ function FindingDetailPage() {
                 <ErrorBox error={addComment.error} />
               </form>
             )}
-            <ol className="relative space-y-4 border-l border-line pl-5">
-              {(historyPage === 1 ? f.events : history.data?.items ?? []).map((e) => (
-                <li key={e.id} className="relative">
-                  <span className="absolute -left-[29px] flex h-[18px] w-[18px] items-center justify-center rounded-full border border-line bg-raised text-ink2">
-                    {EVENT_ICON[e.event] ?? <CircleDot className="h-3.5 w-3.5" />}
-                  </span>
-                  <div className="text-sm">{eventText(e)}</div>
-                  <div className="text-xs text-muted" title={fmtDateTime(e.created_at)}>
-                    {fmtDateTime(e.created_at)}
-                  </div>
-                  {e.comment && !INLINE_COMMENT.has(e.event) && (
-                    <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-page px-3 py-2 text-sm text-ink2">
-                      {e.event === "comment" ? withMentions(e.comment) : e.comment}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ol>
+            <FindingHistory events={historyPage === 1 ? f.events : history.data?.items ?? []} />
             <ErrorBox error={history.error} />
             {(f.events_total ?? 0) > 200 && (
               <div className="mt-4 flex items-center justify-between gap-3">

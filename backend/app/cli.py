@@ -19,7 +19,7 @@ import signal
 import sys
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import settings
 from app.core.db import SessionLocal
@@ -92,8 +92,7 @@ def cmd_prune(args: argparse.Namespace) -> None:
         "audit log": settings.retention_audit_days,
     }
     if not any(configured.values()):
-        print("No retention rule is configured; nothing to do.")
-        return
+        print("No retention rule is configured; only expired authentication records will be pruned.")
     print("Keeping: " + ", ".join(f"{k} {v} days" if v else f"{k} forever" for k, v in configured.items()))
     with SessionLocal() as db:
         removed = retention.run(db)
@@ -103,6 +102,43 @@ def cmd_prune(args: argparse.Namespace) -> None:
             db.commit()
     done = "would remove" if args.dry_run else "removed"
     print(f"{done}: " + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in removed.items()))
+
+
+def cmd_check_asset_names(_: argparse.Namespace) -> None:
+    from sqlalchemy import func
+
+    from app.models import Asset
+    from app.services.asset_names import identity
+
+    with SessionLocal() as db:
+        collisions = db.execute(
+            select(identity(), func.array_agg(Asset.id))
+            .group_by(identity())
+            .having(func.count() > 1)
+            .order_by(identity())
+        ).all()
+    for name, ids in collisions:
+        print(f"{name}: asset IDs {sorted(ids)}")
+    if collisions:
+        sys.exit("Resolve names explicitly; no assets were merged or modified")
+    print("No asset name collisions")
+
+
+def cmd_bind_oidc(args: argparse.Namespace) -> None:
+    from urllib.parse import urlsplit
+
+    issuer = args.legacy_issuer
+    parsed = urlsplit(issuer)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.query or parsed.fragment:
+        sys.exit("Provide the exact original OIDC issuer URL")
+    with SessionLocal() as db:
+        result = db.execute(
+            update(User)
+            .where(User.oidc_subject.is_not(None), User.oidc_issuer.is_(None))
+            .values(oidc_issuer=issuer, token_version=User.token_version + 1)
+        )
+        db.commit()
+    print(f"Bound {result.rowcount} legacy identities to {issuer}; previous sessions were revoked.")
 
 
 def cmd_reset_mfa(args: argparse.Namespace) -> None:
@@ -181,6 +217,7 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init-db").set_defaults(func=cmd_init_db)
     sub.add_parser("check-db").set_defaults(func=cmd_check_db)
+    sub.add_parser("check-asset-names").set_defaults(func=cmd_check_asset_names)
     sub.add_parser("bootstrap").set_defaults(func=cmd_bootstrap)
     ca = sub.add_parser("create-admin")
     ca.add_argument("email")
@@ -196,6 +233,9 @@ def main() -> None:
     pr = sub.add_parser("prune")
     pr.add_argument("--dry-run", action="store_true", help="report what would go, and change nothing")
     pr.set_defaults(func=cmd_prune)
+    bind = sub.add_parser("bind-oidc-identities", help="bind legacy SSO accounts to their original issuer")
+    bind.add_argument("--legacy-issuer", required=True)
+    bind.set_defaults(func=cmd_bind_oidc)
     rm = sub.add_parser("reset-mfa")
     rm.add_argument("email")
     rm.set_defaults(func=cmd_reset_mfa)

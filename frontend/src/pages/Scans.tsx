@@ -1,5 +1,6 @@
+import AsyncPicker from "../components/AsyncPicker";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useAssetOptions } from "../api/queries";
+
 import { request } from "../api/typed";
 import ScanTable from "../components/ScanTable";
 import { ErrorBox, PageHeader, Pagination, Spinner } from "../components/ui";
@@ -9,7 +10,7 @@ const PAGE_SIZE = 25;
 
 export default function Scans() {
   const { params, update, page } = useUrlParams();
-  const assets = useAssetOptions();
+
   const assetId = params.get("asset_id") ?? "";
   const scanType = params.get("scan_type") ?? "";
   const source = params.get("source") ?? "";
@@ -30,14 +31,7 @@ export default function Scans() {
         subtitle="Every imported SAST, SCA, IaC and DAST report, with its deduplication outcome. Previews (branch scans) change nothing."
       />
       <div className="mb-4 flex flex-wrap gap-2">
-        <select className="input w-auto" value={assetId} onChange={(e) => set("asset_id", e.target.value)} aria-label="Asset">
-          <option value="">All assets</option>
-          {assets.data?.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <AsyncPicker kind="assets" label="Asset" value={assetId} emptyLabel="All assets" onChange={(value) => set("asset_id", value)} />
         <select className="input w-auto" value={scanType} onChange={(e) => set("scan_type", e.target.value)} aria-label="Scan type">
           <option value="">SAST + SCA</option>
           <option value="sast">SAST</option>

@@ -42,6 +42,7 @@ class PreviewResult(BaseModel):
     branch: str | None
     default_branch: str | None
     counts: PreviewCounts
+    would_resolve: int | None = None  # null for previews created before projection counts were recorded
     truncated: bool  # more new findings than the preview lists
     new: list[dict[str, Any]]
 

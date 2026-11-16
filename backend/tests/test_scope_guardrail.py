@@ -37,6 +37,7 @@ SCOPED = {
     ("GET", "/api/v1/analytics/trends"),
     ("GET", "/api/v1/assets"),
     ("GET", "/api/v1/assets/options"),
+    ("GET", "/api/v1/assets/options/search"),
     ("GET", "/api/v1/assets/{asset_id}"),
     ("GET", "/api/v1/assets/{asset_id}/components"),
     ("GET", "/api/v1/assets/{asset_id}/sbom"),
@@ -105,6 +106,9 @@ UNSCOPED = {
     ("GET", "/api/v1/tokens"),
     ("GET", "/api/v1/users"),
     ("GET", "/api/v1/users/directory"),
+    # Directory identities remain global, matching the existing assignee directory policy.
+    ("GET", "/api/v1/users/directory/search"),
+    ("GET", "/api/v1/users/directory/lookup"),
     ("GET", "/api/v1/views"),
     ("GET", "/api/v1/webhooks"),
     ("GET", "/api/v1/webhooks/{webhook_id}/deliveries"),

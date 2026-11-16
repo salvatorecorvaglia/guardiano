@@ -37,7 +37,9 @@ def test_nothing_is_deleted_until_a_rule_is_configured(db, asset):
     db.add(AuditLog(action="user.create", created_at=utcnow() - timedelta(days=OLD)))
     db.commit()
 
-    assert retention.run(db) == {"scans": 0, "webhook_deliveries": 0, "audit_log": 0, "revoked_tokens": 0}
+    assert retention.run(db) == {"scans": 0, "webhook_deliveries": 0, "audit_log": 0, "revoked_tokens": 0,
+        "password_resets": 0,
+    }
     assert db.get(Scan, old.id) is not None
     assert db.scalars(select(AuditLog)).all() != []
 
@@ -175,7 +177,9 @@ def test_the_sweep_applies_every_configured_rule(db, asset, monkeypatch):
     db.add(AuditLog(action="user.create", created_at=utcnow() - timedelta(days=OLD)))
     db.commit()
 
-    assert retention.run(db) == {"scans": 1, "webhook_deliveries": 1, "audit_log": 1, "revoked_tokens": 0}
+    assert retention.run(db) == {"scans": 1, "webhook_deliveries": 1, "audit_log": 1, "revoked_tokens": 0,
+        "password_resets": 0,
+    }
     db.commit()
     assert db.scalars(select(Finding)).all(), "findings are never what retention removes"
 

@@ -1,7 +1,8 @@
+import UserMultiPicker from "./UserMultiPicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail, Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useDirectory, useMeta, useProducts } from "../api/queries";
+import { useUserNames, useMeta, useProducts } from "../api/queries";
 import { request } from "../api/typed";
 import type { ReportSchedule } from "../api/types";
 import { fmtDateTime } from "../lib/format";
@@ -16,9 +17,9 @@ export default function ReportSchedules() {
   const qc = useQueryClient();
   const toast = useToast();
   const meta = useMeta();
-  const directory = useDirectory();
   const products = useProducts();
   const list = useQuery({ queryKey: ["report-schedules"], queryFn: ({ signal }) => request("get", "/api/v1/report-schedules", { signal }) });
+  const directory = useUserNames(list.data?.flatMap((schedule) => schedule.recipient_ids) ?? []);
   const [editing, setEditing] = useState<ReportSchedule | "new" | null>(null);
   const [deleting, setDeleting] = useState<ReportSchedule | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -147,23 +148,8 @@ export default function ReportSchedules() {
         </div>
         <fieldset>
           <legend className="label">Recipients</legend>
-          <div className="grid max-h-48 gap-1 overflow-y-auto sm:grid-cols-2">
-            {directory.data?.map((u) => (
-              <label key={u.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={draft.recipient_ids.includes(u.id)}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      recipient_ids: e.target.checked ? [...draft.recipient_ids, u.id] : draft.recipient_ids.filter((x) => x !== u.id),
-                    })
-                  }
-                />
-                {u.full_name || u.email}
-              </label>
-            ))}
-          </div>
+          <UserMultiPicker maxSelected={50} label="Recipients" value={draft.recipient_ids} disabled={save.isPending}
+            onChange={(recipient_ids) => setDraft({ ...draft, recipient_ids })} />
         </fieldset>
         <ErrorBox error={save.error} />
       </Modal>

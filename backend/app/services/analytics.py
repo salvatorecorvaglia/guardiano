@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import Integer, and_, cast, func, literal_column, or_, select, text
+from sqlalchemy import Integer, and_, case, cast, func, literal_column, or_, select, text, true
 from sqlalchemy.orm import Session, aliased
 
 from app.models import Asset, Component, Finding, FindingEvent, Product, Scan, Team
@@ -536,8 +536,7 @@ def coverage(db: Session, stale_days: int, *, scope: Scope) -> dict[str, Any]:
         .group_by(Scan.asset_id)
         .subquery()
     )
-    has_sbom = select(Component.id).where(Component.asset_id == Asset.id).correlate(Asset).exists()
-    rows = db.execute(
+    base = (
         select(
             Asset.id,
             Asset.name,
@@ -545,40 +544,68 @@ def coverage(db: Session, stale_days: int, *, scope: Scope) -> dict[str, Any]:
             scanned.c.last_scan_at,
             scanned.c.last_sast_at,
             scanned.c.last_sca_at,
-            has_sbom.label("has_sbom"),
         )
         .outerjoin(scanned, scanned.c.asset_id == Asset.id)
         .where(scope.assets())
-    ).all()
-
-    cutoff = utcnow() - timedelta(days=stale_days)
-    never = [r for r in rows if r.last_scan_at is None]
-    stale = [r for r in rows if r.last_scan_at is not None and r.last_scan_at < cutoff]
-    # Never-scanned first, then the longest-unscanned; the most critical first within each.
-    rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    uncovered = sorted(never, key=lambda r: (rank.get(r.criticality, 4), r.name.lower())) + sorted(
-        stale, key=lambda r: (r.last_scan_at, rank.get(r.criticality, 4))
+        .cte("coverage_assets")
     )
+    cutoff = utcnow() - timedelta(days=stale_days)
+    never = base.c.last_scan_at.is_(None)
+    stale = base.c.last_scan_at < cutoff
+    totals = (
+        select(
+            func.count().label("assets"),
+            func.count().filter(never).label("never_scanned"),
+            func.count().filter(stale).label("stale"),
+            func.count().filter(base.c.last_sast_at.is_(None)).label("without_sast"),
+            func.count().filter(base.c.last_sca_at.is_(None)).label("without_sca"),
+        )
+        .select_from(base)
+        .subquery()
+    )
+    rank = case({"critical": 0, "high": 1, "medium": 2, "low": 3}, value=base.c.criticality, else_=4)
+    limited = (
+        select(base)
+        .where(or_(never, stale))
+        .order_by(
+            case((never, 0), else_=1),
+            base.c.last_scan_at.asc().nulls_first(),
+            rank,
+            case((never, func.lower(base.c.name)), else_=None),
+            base.c.id,
+        )
+        .limit(COVERAGE_LIST_LIMIT)
+        .subquery()
+    )
+    has_sbom = select(Component.id).where(Component.asset_id == limited.c.id).exists()
+    # One statement keeps the totals and list on the same database snapshot.
+    never_limited = limited.c.last_scan_at.is_(None)
+    rows = (
+        db.execute(
+            select(totals, limited, has_sbom.label("has_sbom"))
+            .select_from(totals.outerjoin(limited, true()))
+            .order_by(
+                case((never_limited, 0), else_=1),
+                limited.c.last_scan_at.asc().nulls_first(),
+                case({"critical": 0, "high": 1, "medium": 2, "low": 3}, value=limited.c.criticality, else_=4),
+                case((never_limited, func.lower(limited.c.name)), else_=None),
+                limited.c.id,
+            )
+        )
+        .mappings()
+        .all()
+    )
+    counts = {column.name: rows[0][column.name] for column in totals.c}
+    uncovered = [
+        {**{column.name: row[column.name] for column in limited.c}, "has_sbom": row["has_sbom"]}
+        for row in rows
+        if row["id"] is not None
+    ]
     return {
         "stale_days": stale_days,
-        "assets": len(rows),
-        "covered": len(rows) - len(never) - len(stale),
-        "stale": len(stale),
-        "never_scanned": len(never),
-        "without_sast": sum(1 for r in rows if r.last_sast_at is None),
-        "without_sca": sum(1 for r in rows if r.last_sca_at is None),
-        "uncovered": [
-            {
-                "id": r.id,
-                "name": r.name,
-                "criticality": r.criticality,
-                "last_scan_at": r.last_scan_at,
-                "last_sast_at": r.last_sast_at,
-                "last_sca_at": r.last_sca_at,
-                "has_sbom": bool(r.has_sbom),
-            }
-            for r in uncovered[:COVERAGE_LIST_LIMIT]
-        ],
+        **dict(counts),
+        "covered": counts["assets"] - counts["never_scanned"] - counts["stale"],
+        "uncovered": uncovered,
     }
 
 

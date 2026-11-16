@@ -11,7 +11,9 @@ Tag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_
 
 
 class AssetBase(BaseModel):
-    name: str = Field(min_length=1, max_length=200, pattern=NAME_PATTERN)
+    name: Annotated[str, StringConstraints(strip_whitespace=True)] = Field(
+        min_length=1, max_length=200, pattern=NAME_PATTERN
+    )
     type: AssetType = AssetType.repository
     description: str = ""
     repo_url: str | None = Field(None, max_length=500)
@@ -36,7 +38,9 @@ class AssetCreate(AssetBase):
 
 
 class AssetUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=200, pattern=NAME_PATTERN)
+    name: Annotated[str, StringConstraints(strip_whitespace=True)] | None = Field(
+        None, min_length=1, max_length=200, pattern=NAME_PATTERN
+    )
     type: AssetType | None = None
     description: str | None = None
     repo_url: str | None = Field(None, max_length=500)
@@ -90,12 +94,14 @@ class AssetSummary(AssetOut):
 
 
 class ProductBody(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
+    name: Annotated[str, StringConstraints(strip_whitespace=True)] = Field(min_length=1, max_length=200)
     description: str = Field("", max_length=5000)
 
 
 class ProductUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=200)
+    name: Annotated[str, StringConstraints(strip_whitespace=True)] | None = Field(
+        None, min_length=1, max_length=200
+    )
     description: str | None = Field(None, max_length=5000)
 
 

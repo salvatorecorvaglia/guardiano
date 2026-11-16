@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +10,7 @@ from app.models.base import TimestampMixin, utcnow
 
 class User(TimestampMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("oidc_issuer", "oidc_subject", name="uq_users_oidc_identity"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
@@ -26,7 +27,8 @@ class User(TimestampMixin, Base):
     failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Stable identifier from the identity provider (the "sub" claim), set on first SSO sign-in.
-    oidc_subject: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    oidc_subject: Mapped[str | None] = mapped_column(String(255), index=True)
+    oidc_issuer: Mapped[str | None] = mapped_column(Text)
 
     # Second factor for local sign-in (core/totp.py). The secret is encrypted at rest.
     mfa_secret: Mapped[str | None] = mapped_column(Text)
@@ -69,7 +71,7 @@ class PasswordReset(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     requested_ip: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

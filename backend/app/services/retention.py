@@ -26,12 +26,13 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import AuditLog, Scan, WebhookDelivery
+from app.models import AuditLog, PasswordReset, Scan, WebhookDelivery
 from app.models.base import utcnow
 from app.services import sessions
 from app.services.sbom import latest_inventory_scans
 
 log = logging.getLogger(__name__)
+RESET_BATCH_SIZE = 1000
 
 
 def _cutoff(days: int, now: datetime | None = None) -> datetime:
@@ -43,13 +44,18 @@ def prune_scans(db: Session, days: int, now: datetime | None = None) -> int:
     if days <= 0:
         return 0
     # Keep a baseline per scanner/type, including the explicit empty inventories.
-    keep = select(func.max(Scan.id)).where(Scan.source != "preview").group_by(
-        Scan.asset_id, Scan.tool_name, Scan.scan_type
+    keep = (
+        select(func.max(Scan.id))
+        .where(Scan.source != "preview")
+        .group_by(Scan.asset_id, Scan.tool_name, Scan.scan_type)
     )
-    return db.execute(delete(Scan).where(
-        Scan.created_at < _cutoff(days, now), Scan.id.not_in(keep),
-        Scan.id.not_in(latest_inventory_scans()),
-    )).rowcount
+    return db.execute(
+        delete(Scan).where(
+            Scan.created_at < _cutoff(days, now),
+            Scan.id.not_in(keep),
+            Scan.id.not_in(latest_inventory_scans()),
+        )
+    ).rowcount
 
 
 def prune_deliveries(db: Session, days: int, now: datetime | None = None) -> int:
@@ -64,6 +70,22 @@ def prune_audit_log(db: Session, days: int, now: datetime | None = None) -> int:
     return db.execute(delete(AuditLog).where(AuditLog.created_at < _cutoff(days, now))).rowcount
 
 
+def prune_password_resets(
+    db: Session, now: datetime | None = None, *, batch_size: int = RESET_BATCH_SIZE
+) -> int:
+    """Bound each sweep's work; expired credentials have no remaining authentication value."""
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    ids = (
+        select(PasswordReset.id)
+        .where(PasswordReset.expires_at <= (now or utcnow()))
+        .order_by(PasswordReset.expires_at, PasswordReset.id)
+        .limit(batch_size)
+        .with_for_update(skip_locked=True)
+    )
+    return db.execute(delete(PasswordReset).where(PasswordReset.id.in_(ids))).rowcount or 0
+
+
 def run(db: Session, now: datetime | None = None) -> dict[str, int]:
     """Apply every configured retention rule. Returns what was removed, for logging and the CLI."""
     removed = {
@@ -73,6 +95,7 @@ def run(db: Session, now: datetime | None = None) -> dict[str, int]:
         # Not configurable: once a revoked token has expired on its own, the record of it is dead
         # weight, and keeping it changes nothing about who can sign in.
         "revoked_tokens": sessions.prune(db),
+        "password_resets": prune_password_resets(db, now),
     }
     if any(removed.values()):
         log.info("retention removed %s", ", ".join(f"{n} {k}" for k, n in removed.items() if n))

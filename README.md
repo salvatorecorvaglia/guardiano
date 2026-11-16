@@ -89,9 +89,19 @@ The asset is created if it does not exist and the caller has access to create it
 
 - Use `preview=true` to evaluate a report and its quality gate without updating the findings inventory. A branch different from an asset's configured default branch also implies preview mode.
 - Use `close_missing=true` for complete default-branch reports to resolve findings from the same tool that are no longer reported. Empty reports do not close findings unless `allow_empty=true` is also supplied.
+- Preview details and severity counts include auto-triage effects; each detailed finding also retains its
+  `scanner_severity`. The optional `preview.would_resolve` count reports what `close_missing` would
+  resolve without changing inventory. It is null for older previews that did not record this count.
 - A successful upload returns HTTP 201. Check the response's `gate.passed` value separately to enforce a quality gate in CI; `gate` is null when no policy applies.
 
 Ready-made CI integrations are available in [integrations/github-action](integrations/github-action/action.yml) and [integrations/gitlab](integrations/gitlab/guardiano.gitlab-ci.yml).
+
+Asset and user selectors search in bounded pages and keep selected identities visible when searches
+change. Existing `/assets/options` and `/users/directory` list APIs remain compatible; new clients can
+use `/assets/options/search` and `/users/directory/search` with `q`, `page`, `page_size` (up to 100),
+and `selected_id`. Search responses include a separate `selected` item so it need not match the page.
+`/users/directory/lookup` resolves up to 500 explicit `ids` without downloading the directory.
+Asset search and selection both enforce the caller's asset visibility.
 
 ## Configuration
 
@@ -112,6 +122,31 @@ Ready-made CI integrations are available in [integrations/github-action](integra
 | `RETENTION_*`, `METRICS_*` | Record retention and optional Prometheus metrics |
 
 Keep `INTEGRATIONS_KEY` persistent and independent of `SECRET_KEY`. Without it, encryption derives from `SECRET_KEY`, so rotating the signing key also makes stored credentials and MFA secrets unreadable. Back up configuration secrets separately from the database.
+
+When upgrading an installation with existing SSO accounts, apply migrations, then explicitly bind
+legacy identities to the **original** provider before allowing SSO traffic:
+
+```bash
+docker compose exec backend python -m app.cli bind-oidc-identities --legacy-issuer https://original-provider.example/realm
+```
+
+Use the exact issuer previously trusted by the installation, never a replacement provider.
+The command is idempotent and revokes previous sessions for affected accounts. Unbound legacy
+identities cannot sign in. Rehearse against a restored backup and retain local administrator
+recovery access. To roll back this identity migration, restore a verified backup.
+
+Asset names are matched without surrounding spaces and without case distinctions across manual
+creation, renaming, and scan ingestion. To inspect collisions left by earlier versions, run:
+
+```bash
+docker compose exec backend python -m app.cli check-asset-names
+```
+
+Resolve collisions explicitly by renaming assets by ID; histories are never merged automatically.
+Uploads with an ambiguous name return HTTP 409; use `asset_id` while resolving the names.
+Expired password-reset credentials are cleaned up even when history retention is disabled. The
+worker drains the backlog in transactions of at most 1,000 reset records; an explicit `prune`
+command removes one batch and supports `--dry-run`.
 
 For disconnected installations, disable feed synchronization and advisory lookups as needed. The CLI supports importing KEV and EPSS files downloaded elsewhere:
 

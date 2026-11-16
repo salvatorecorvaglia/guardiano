@@ -122,9 +122,11 @@ def test_queued_webhook_checks_enabled_and_success_before_sending(monkeypatch):
 def test_sso_group_removal_demotes_and_revokes_existing_sessions(client, auth, db, users, monkeypatch):
     user = users["admin"]
     user.oidc_subject = "audit-admin"
+    user.oidc_issuer = "https://audit-idp.test"
+    monkeypatch.setattr(settings, "oidc_issuer", user.oidc_issuer)
     db.commit()
     monkeypatch.setattr(settings, "oidc_role_map", "admins:admin")
-    oidc.sign_in(db, {"sub": "audit-admin", "groups": []})
+    oidc.sign_in(db, {"iss": user.oidc_issuer, "sub": "audit-admin", "groups": []})
     db.commit()
     assert user.role == "viewer"
     assert client.get("/api/v1/auth/me", headers=auth["admin"]).status_code == 401

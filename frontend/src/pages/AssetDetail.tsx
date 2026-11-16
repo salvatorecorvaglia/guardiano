@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Lock, Pencil, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { analyticsKeys, invalidateInventory, useDirectory } from "../api/queries";
+import { analyticsKeys, invalidateInventory, useUserNames } from "../api/queries";
 
 import { download, request } from "../api/typed";
 import { useAuth } from "../auth/AuthContext";
@@ -24,7 +24,6 @@ export default function AssetDetail() {
 
 function AssetDetailPage() {
   const { id } = useParams();
-  const directory = useDirectory();
   const teams = useQuery({ queryKey: ["teams"], queryFn: ({ signal }) => request("get", "/api/v1/teams", { signal }), staleTime: 5 * 60_000 });
   const { can } = useAuth();
   const qc = useQueryClient();
@@ -35,6 +34,7 @@ function AssetDetailPage() {
   const [uploading, setUploading] = useState(false);
 
   const asset = useQuery({ queryKey: ["asset", id], queryFn: ({ signal }) => request("get", "/api/v1/assets/{asset_id}", { params: { asset_id: Number(id) }, signal }) });
+  const directory = useUserNames(asset.data?.default_assignee_id ? [asset.data.default_assignee_id] : []);
   const summary = useQuery({
     queryKey: analyticsKeys.summary(id),
     queryFn: ({ signal }) => request("get", "/api/v1/analytics/summary", { signal, query: { asset_id: Number(id) } }),

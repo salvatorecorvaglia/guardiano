@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -52,6 +52,7 @@ def put_sla(
                 continue
             rows.append((severity, criticality, days))
 
+    db.execute(text("SELECT pg_advisory_xact_lock(26468, 2)"))
     before, after = sla.load_policy(db), sla.build_policy(rows)
     changes = {
         f"{s}/{c}": {"from": before.days.get((s, c)), "to": after.days.get((s, c))}

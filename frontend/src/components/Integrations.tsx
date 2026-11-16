@@ -1,8 +1,9 @@
+import AsyncPicker from "./AsyncPicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { Pencil, Plug, Plus, Ticket as TicketIcon, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useAssetOptions } from "../api/queries";
+
 import { type RequestBody, request } from "../api/typed";
 import type { Integration, IntegrationCheck, Severity } from "../api/types";
 import { relTime, SEVERITIES, SEVERITY_LABEL } from "../lib/format";
@@ -54,7 +55,7 @@ const EMPTY: Draft = {
 function IntegrationForm({ integration, onClose }: { integration?: Integration; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const assets = useAssetOptions();
+
   const [draft, setDraft] = useState<Draft>(
     integration
       ? {
@@ -169,14 +170,7 @@ function IntegrationForm({ integration, onClose }: { integration?: Integration; 
           <input className="input" value={draft.labels} onChange={(e) => setDraft({ ...draft, labels: e.target.value })} />
         </Field>
         <Field label="Asset" hint="Limit this tracker to one asset">
-          <select className="input" value={draft.asset_id} onChange={(e) => setDraft({ ...draft, asset_id: e.target.value })}>
-            <option value="">Offer for every asset</option>
-            {assets.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AsyncPicker kind="assets" label="Asset" value={draft.asset_id} emptyLabel="Offer for every asset" onChange={(value) => setDraft({ ...draft, asset_id: value })} />
         </Field>
       </div>
       {draft.kind !== "jira" && (

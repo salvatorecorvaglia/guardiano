@@ -116,6 +116,8 @@ export interface ApiContract {
       Page_FindingOut_: Page_FindingOut_;
       Page_JobOut_: Page_JobOut_;
       Page_ScanOut_: Page_ScanOut_;
+      PickerPage_AssetRef_: PickerPage_AssetRef_;
+      PickerPage_UserBrief_: PickerPage_UserBrief_;
       PreviewCounts: PreviewCounts;
       PreviewResult: PreviewResult;
       ProductBody: ProductBody;
@@ -415,6 +417,22 @@ export interface ApiContract {
         cookie?: never;
       };
       get: OperationAssetOptionsApiV1AssetsOptionsGet;
+      put?: never;
+      post?: never;
+      delete?: never;
+      options?: never;
+      head?: never;
+      patch?: never;
+      trace?: never;
+    };
+    "/api/v1/assets/options/search": {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      get: OperationSearchAssetOptionsApiV1AssetsOptionsSearchGet;
       put?: never;
       post?: never;
       delete?: never;
@@ -1479,6 +1497,38 @@ export interface ApiContract {
       patch?: never;
       trace?: never;
     };
+    "/api/v1/users/directory/lookup": {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      get: OperationLookupDirectoryApiV1UsersDirectoryLookupGet;
+      put?: never;
+      post?: never;
+      delete?: never;
+      options?: never;
+      head?: never;
+      patch?: never;
+      trace?: never;
+    };
+    "/api/v1/users/directory/search": {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      get: OperationSearchDirectoryApiV1UsersDirectorySearchGet;
+      put?: never;
+      post?: never;
+      delete?: never;
+      options?: never;
+      head?: never;
+      patch?: never;
+      trace?: never;
+    };
     "/api/v1/users/{user_id}": {
       parameters: {
         query?: never;
@@ -1673,6 +1723,7 @@ export interface ApiContract {
     list_assets_api_v1_assets_get: OperationListAssetsApiV1AssetsGet;
     create_asset_api_v1_assets_post: OperationCreateAssetApiV1AssetsPost;
     asset_options_api_v1_assets_options_get: OperationAssetOptionsApiV1AssetsOptionsGet;
+    search_asset_options_api_v1_assets_options_search_get: OperationSearchAssetOptionsApiV1AssetsOptionsSearchGet;
     get_asset_api_v1_assets__asset_id__get: OperationGetAssetApiV1Assets_AssetId_Get;
     delete_asset_api_v1_assets__asset_id__delete: OperationDeleteAssetApiV1Assets_AssetId_Delete;
     update_asset_api_v1_assets__asset_id__patch: OperationUpdateAssetApiV1Assets_AssetId_Patch;
@@ -1760,6 +1811,8 @@ export interface ApiContract {
     list_users_api_v1_users_get: OperationListUsersApiV1UsersGet;
     create_user_api_v1_users_post: OperationCreateUserApiV1UsersPost;
     directory_api_v1_users_directory_get: OperationDirectoryApiV1UsersDirectoryGet;
+    lookup_directory_api_v1_users_directory_lookup_get: OperationLookupDirectoryApiV1UsersDirectoryLookupGet;
+    search_directory_api_v1_users_directory_search_get: OperationSearchDirectoryApiV1UsersDirectorySearchGet;
     delete_user_api_v1_users__user_id__delete: OperationDeleteUserApiV1Users_UserId_Delete;
     update_user_api_v1_users__user_id__patch: OperationUpdateUserApiV1Users_UserId_Patch;
     list_views_api_v1_views_get: OperationListViewsApiV1ViewsGet;
@@ -2803,6 +2856,7 @@ export interface PreviewResult {
     [k: string]: unknown;
   }[];
   truncated: boolean;
+  would_resolve?: number | null;
 }
 export interface PreviewCounts {
   known: number;
@@ -2810,6 +2864,20 @@ export interface PreviewCounts {
   new_by_severity: {
     [k: string]: number;
   };
+  total: number;
+}
+export interface PickerPage_AssetRef_ {
+  items: AssetRef[];
+  page: number;
+  page_size: number;
+  selected?: AssetRef | null;
+  total: number;
+}
+export interface PickerPage_UserBrief_ {
+  items: UserBrief[];
+  page: number;
+  page_size: number;
+  selected?: UserBrief | null;
   total: number;
 }
 export interface ProductBody {
@@ -3827,6 +3895,38 @@ export interface OperationAssetOptionsApiV1AssetsOptionsGet {
       };
       content: {
         "application/json": AssetRef[];
+      };
+    };
+  };
+  requestBody?: never;
+}
+export interface OperationSearchAssetOptionsApiV1AssetsOptionsSearchGet {
+  parameters: {
+    query?: {
+      q?: string;
+      selected_id?: number | null;
+      page?: number;
+      page_size?: number;
+    };
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  responses: {
+    "200": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": PickerPage_AssetRef_;
+      };
+    };
+    "422": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": HTTPValidationError;
       };
     };
   };
@@ -6992,6 +7092,67 @@ export interface OperationDirectoryApiV1UsersDirectoryGet {
       };
       content: {
         "application/json": UserBrief[];
+      };
+    };
+  };
+  requestBody?: never;
+}
+export interface OperationLookupDirectoryApiV1UsersDirectoryLookupGet {
+  parameters: {
+    query?: {
+      ids?: number[] | null;
+    };
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  responses: {
+    "200": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": UserBrief[];
+      };
+    };
+    "422": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": HTTPValidationError;
+      };
+    };
+  };
+  requestBody?: never;
+}
+export interface OperationSearchDirectoryApiV1UsersDirectorySearchGet {
+  parameters: {
+    query?: {
+      q?: string;
+      selected_id?: number | null;
+      page?: number;
+      page_size?: number;
+    };
+    header?: never;
+    path?: never;
+    cookie?: never;
+  };
+  responses: {
+    "200": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": PickerPage_UserBrief_;
+      };
+    };
+    "422": {
+      headers: {
+        [k: string]: unknown;
+      };
+      content: {
+        "application/json": HTTPValidationError;
       };
     };
   };

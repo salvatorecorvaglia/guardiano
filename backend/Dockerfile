@@ -21,6 +21,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # client address it yields is what the login rate limit and the audit log are keyed on, so trusting
 # every peer would let anyone who reaches this container directly forge both. The bundled stack
 # widens it in docker-compose.yml, where nginx overwrites the header with the real peer address.
+RUN apk add --no-cache 'krb5-libs>=1.22.3-r0'
 RUN addgroup -S -g 10001 guardiano \
  && adduser -S -D -H -u 10001 -G guardiano -h /app -s /sbin/nologin guardiano \
  && mkdir -p /app && chown guardiano:guardiano /app

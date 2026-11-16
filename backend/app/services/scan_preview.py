@@ -2,29 +2,42 @@
 
 import logging
 from collections import Counter
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Asset, Finding, Scan
+from app.models import Finding, Scan
 from app.models.enums import ACTIVE_STATUSES
 from app.parsers.base import NormalizedFinding
 from app.services import gate, triage
 from app.services.scan_context import ScanContext
 from app.services.scan_events import _emit_scan_events
-from app.services.scan_report import IngestOptions, _new_finding, reconcile_tools, reported_severity
+from app.services.scan_report import _new_finding, reconcile_tools, reopen_reason, reported_severity
 
 log = logging.getLogger(__name__)
 
 
-def preview_projection(db: Session, context: ScanContext) -> tuple[gate.Projection, Counter[str], int]:
+_PREVIEW_LIMIT = 200
+
+
+@dataclass
+class PreviewProjection:
+    inventory: gate.Projection = field(default_factory=gate.Projection)
+    new_findings: list[NormalizedFinding] = field(default_factory=list)
+    new_counts: Counter[str] = field(default_factory=Counter)
+    details: list[dict[str, Any]] = field(default_factory=list)
+    reopened: int = 0
+    would_resolve: int = 0
+
+
+def preview_projection(db: Session, context: ScanContext) -> PreviewProjection:
     asset, scan, opts, now = context.asset, context.scan, context.options, context.now
     batch, existing = context.prepared.findings.by_key, context.existing
     report, report_tools = context.prepared.report, context.prepared.findings.tools
-    projection = gate.Projection()
-    new_counts: Counter[str] = Counter()
-    reopened = 0
+    result = PreviewProjection()
+    projection = result.inventory
     rules = triage.load_rules(db, asset.id, now)
     ctx = triage.context(db, asset, rules, (nf.cve_id for nf in batch.values())) if rules else None
     for key, nf in batch.items():
@@ -33,7 +46,28 @@ def preview_projection(db: Session, context: ScanContext) -> tuple[gate.Projecti
             f = _new_finding(asset, key, nf, scan, now)
             if rules:
                 triage.apply_rules(db, f, rules, now=now, ctx=ctx, record=False)
-            new_counts[f.severity] += 1
+            result.new_findings.append(nf)
+            result.new_counts[f.severity] += 1
+            if len(result.details) < _PREVIEW_LIMIT:
+                detail = {
+                    name: getattr(f, name)
+                    for name in (
+                        "title",
+                        "type",
+                        "severity",
+                        "cvss_score",
+                        "rule_id",
+                        "file_path",
+                        "line_start",
+                        "package_name",
+                        "package_version",
+                        "cve_id",
+                        "fixed_version",
+                        "status",
+                    )
+                }
+                detail["scanner_severity"] = nf.severity
+                result.details.append(detail)
             projection.additions.append(gate.GateFinding.of(f))
         else:
             f = gate.GateFinding.of(stored)
@@ -41,13 +75,9 @@ def preview_projection(db: Session, context: ScanContext) -> tuple[gate.Projecti
                 stored.tools or [], context.prepared.findings.sources[key], report_tools, opts.close_missing
             )
             f.severity = stored.severity_override or reported_severity(stored, nf, tools=tools)
-            if stored.status == "resolved" or (
-                stored.status == "risk_accepted"
-                and stored.risk_accepted_until is not None
-                and stored.risk_accepted_until <= now
-            ):
+            if reopen_reason(stored, nf.tool_name, now):
                 f.status = "open"
-                reopened += 1
+                result.reopened += 1
             projection.replacements[stored.id] = f
     if opts.close_missing and (batch or opts.allow_empty):
         matched = {f.id for f in existing.values()}
@@ -67,68 +97,49 @@ def preview_projection(db: Session, context: ScanContext) -> tuple[gate.Projecti
                 f = gate.GateFinding.of(stored)
                 f.status = "resolved"
                 projection.replacements[stored.id] = f
-    return projection, new_counts, reopened
+                result.would_resolve += 1
+    return result
 
 
-_PREVIEW_LIMIT = 200
-
-
-def _preview_result(
-    asset: Asset, opts: IngestOptions, batch: dict[str, NormalizedFinding], existing: dict[str, Finding]
-) -> dict[str, Any]:
-    new = [nf for key, nf in batch.items() if key not in existing]
+def _preview_result(context: ScanContext, result: PreviewProjection) -> dict[str, Any]:
+    total = len(context.prepared.findings.by_key)
+    new = len(result.new_findings)
     return {
-        "branch": opts.branch,
-        "default_branch": asset.default_branch,
+        "branch": context.options.branch,
+        "default_branch": context.asset.default_branch,
         "counts": {
-            "total": len(batch),
-            "new": len(new),
-            "known": len(batch) - len(new),
-            "new_by_severity": dict(Counter(nf.severity for nf in new)),
+            "total": total,
+            "new": new,
+            "known": total - new,
+            "new_by_severity": dict(result.new_counts),
         },
-        "truncated": len(new) > _PREVIEW_LIMIT,
-        "new": [
-            {
-                "title": nf.title,
-                "type": nf.type,
-                "severity": nf.severity,
-                "cvss_score": nf.cvss_score,
-                "rule_id": nf.rule_id,
-                "file_path": nf.file_path,
-                "line_start": nf.line_start,
-                "package_name": nf.package_name,
-                "package_version": nf.package_version,
-                "cve_id": nf.cve_id,
-                "fixed_version": nf.fixed_version,
-            }
-            for nf in new[:_PREVIEW_LIMIT]
-        ],
+        "would_resolve": result.would_resolve,
+        "truncated": new > _PREVIEW_LIMIT,
+        "new": result.details,
     }
 
 
 def preview_scan(db: Session, context: ScanContext) -> Scan:
     asset, scan, opts = context.asset, context.scan, context.options
-    batch, existing = context.prepared.findings.by_key, context.existing
+    batch = context.prepared.findings.by_key
     tool_name = context.prepared.findings.tool_name
-    new_in_scan = [nf for key, nf in batch.items() if key not in existing]
+    projected = preview_projection(db, context)
     components = context.prepared.components
     scan.total_count = len(batch)
-    scan.new_count = sum(1 for key in batch if key not in existing)
+    scan.new_count = len(projected.new_findings)
     scan.duplicate_count = len(batch) - scan.new_count
-    scan.preview_result = _preview_result(asset, opts, batch, existing)
+    scan.preview_result = _preview_result(context, projected)
     preview_new = scan.preview_result["new"]
-    projection, new_counts, reopened_count = preview_projection(db, context)
-    scan.preview_result["counts"]["new_by_severity"] = dict(new_counts)
-    scan.reopened_count = reopened_count
+    scan.reopened_count = projected.reopened
     scan.gate_result = gate.evaluate(
         db,
         asset=asset,
         new_by_severity=scan.preview_result["counts"]["new_by_severity"],
-        reopened=reopened_count,
+        reopened=projected.reopened,
         policy=gate.policy_for(db, asset.id),
-        new=new_in_scan,
+        new=projected.new_findings,
         components=components,
-        projection=projection,
+        projection=projected.inventory,
     )
     _emit_scan_events(db, scan, asset, True, preview_new)
     db.commit()

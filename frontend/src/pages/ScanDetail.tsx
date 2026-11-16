@@ -131,6 +131,8 @@ function PreviewDetail({ scan }: { scan: Scan }) {
         <StatTile label="Findings in report" value={fmtNum(preview?.counts.total ?? 0)} />
         <StatTile label="Would be new" value={fmtNum(preview?.counts.new ?? 0)} tone={preview?.counts.new ? "high" : undefined} />
         <StatTile label="Already known" value={fmtNum(preview?.counts.known ?? 0)} />
+        <StatTile label="Would reopen" value={fmtNum(scan.reopened_count)} />
+        <StatTile label="Would resolve" value={preview?.would_resolve == null ? "–" : fmtNum(preview.would_resolve)} />
         <StatTile label="Quality gate" value={scan.gate ? (scan.gate.passed ? "Passed" : "Failed") : "–"} tone={scan.gate && !scan.gate.passed ? "danger" : undefined} />
       </div>
       <section className="card mt-4 overflow-hidden">
@@ -141,9 +143,10 @@ function PreviewDetail({ scan }: { scan: Scan }) {
           <ul className="divide-y divide-line">
             {preview.new.map((f, i) => (
               <li key={i} className="flex items-center gap-3 px-4 py-2.5">
-                <SeverityBadge severity={f.severity as Finding["severity"]} score={f.cvss_score as number | null} />
+                <SeverityBadge severity={f.severity as Finding["severity"]} score={f.scanner_severity != null && f.scanner_severity !== f.severity ? null : f.cvss_score as number | null} />
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-1 text-sm font-medium">{String(f.title)}</div>
+                  {f.scanner_severity != null && f.scanner_severity !== f.severity && <p className="text-xs text-muted">Scanner severity: {String(f.scanner_severity)}{f.cvss_score != null ? ` (CVSS ${String(f.cvss_score)})` : ""} · adjusted by triage rules</p>}
                   <div className="truncate font-mono text-xs text-muted">
                     {f.file_path ? `${f.file_path}${f.line_start ? `:${f.line_start}` : ""}` : [f.package_name, f.package_version].filter(Boolean).join("@")}
                     {f.cve_id ? ` · ${f.cve_id}` : ""}

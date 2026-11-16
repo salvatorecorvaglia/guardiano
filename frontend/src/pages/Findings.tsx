@@ -1,20 +1,24 @@
+import FilterControls from "../components/findings/FilterControls";
+import BulkActions from "../components/findings/BulkActions";
 import { findingFilters } from "../api/findingFilters";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Bug, CalendarClock, Search, Tag, UserPlus, X } from "lucide-react";
-import { type FormEvent, memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { invalidateAfterTriage, useAssetOptions, useDirectory, useProducts } from "../api/queries";
+import { ArrowDown, ArrowUp, Bug } from "lucide-react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { invalidateAfterTriage } from "../api/queries";
 import { download, request } from "../api/typed";
-import type { BulkChange, Finding, Severity, Status } from "../api/types";
+import type { BulkChange } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
-import ExploitBadge from "../components/ExploitBadge";
+import FindingRow from "../components/findings/FindingRow";
+import { ColumnChooser } from "../components/findings/ColumnChooser";
+import { loadHidden, saveHidden, type OptionalColumn } from "../components/findings/columns";
 import SavedViews from "../components/SavedViews";
 import StatusDialog, { type StatusChange } from "../components/StatusDialog";
 import { useToast } from "../components/Toaster";
-import { EmptyState, ErrorBox, PageHeader, Pagination, SeverityBadge, Spinner, StatusBadge, TypeBadge } from "../components/ui";
+import { EmptyState, ErrorBox, PageHeader, Pagination, Spinner } from "../components/ui";
 import { useFindingSelection } from "../hooks/useFindingSelection";
-import { endOfLocalDay, findingLocation, fmtDate, fmtNum, relTime, SEVERITIES, SEVERITY_LABEL, STATUS_LABEL, STATUSES, sevColor } from "../lib/format";
+import { endOfLocalDay, fmtNum } from "../lib/format";
 import { useClampPage, useDebouncedParam, useUrlParams, validCalendarDate } from "../lib/urlState";
 
 const PAGE_SIZE = 50;
@@ -39,78 +43,6 @@ const EXPORTS = [
   { ext: "json", label: "JSON" },
   { ext: "sarif", label: "SARIF 2.1.0" },
 ] as const;
-
-/** Columns a viewer may hide. Severity, the finding itself and status always show. */
-const OPTIONAL_COLUMNS = [
-  { key: "priority", label: "Priority" },
-  { key: "asset", label: "Asset" },
-  { key: "exploit", label: "Exploitability" },
-  { key: "due", label: "Due" },
-  { key: "tools", label: "Tools" },
-  { key: "first_seen", label: "First seen" },
-  { key: "assignee", label: "Assignee" },
-] as const;
-type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]["key"];
-const COLUMNS_KEY = "guardiano.findings.hidden-columns";
-
-// A per-viewer convenience: storage can be missing or refuse (private windows), and then every column shows.
-function loadHidden(): ReadonlySet<OptionalColumn> {
-  try {
-    const raw = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? "[]");
-    const known = new Set<string>(OPTIONAL_COLUMNS.map((c) => c.key));
-    return new Set(Array.isArray(raw) ? raw.filter((k): k is OptionalColumn => known.has(k)) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveHidden(hidden: ReadonlySet<OptionalColumn>) {
-  try {
-    localStorage.setItem(COLUMNS_KEY, JSON.stringify([...hidden]));
-  } catch {
-    // Not remembered; the choice still applies until the page is left.
-  }
-}
-
-function ColumnChooser({ hidden, onChange }: { hidden: ReadonlySet<OptionalColumn>; onChange: (h: ReadonlySet<OptionalColumn>) => void }) {
-  return (
-    <details className="relative">
-      <summary className="btn-secondary cursor-pointer list-none">Columns</summary>
-      <div className="absolute right-0 z-20 mt-1 w-44 space-y-1 rounded-lg border border-line bg-raised p-2 shadow-lg">
-        {OPTIONAL_COLUMNS.map((c) => (
-          <label key={c.key} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!hidden.has(c.key)}
-              onChange={() => {
-                const next = new Set(hidden);
-                if (next.has(c.key)) next.delete(c.key);
-                else next.add(c.key);
-                onChange(next);
-              }}
-            />
-            {c.label}
-          </label>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className={clsx(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-        active ? "border-accent bg-accent/10 text-ink" : "border-line bg-raised text-ink2 hover:text-ink",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
 
 function SortHeader({
   k,
@@ -141,11 +73,8 @@ export default function Findings() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { can, user } = useAuth();
+  const { can } = useAuth();
   const qc = useQueryClient();
-  const assets = useAssetOptions();
-  const products = useProducts();
-  const directory = useDirectory();
 
   const sort = params.get("sort") || "-severity";
   const [q, setQ] = useDebouncedParam("q", params, update);
@@ -247,8 +176,6 @@ export default function Findings() {
   const total = list.data?.total ?? 0;
   const selectedCount = allMatching ? total : selected.size;
   const activeFilters = [...LIST_KEYS, ...SCALAR_KEYS].some((k) => params.has(k));
-  const sevSel = params.getAll("severity") as Severity[];
-  const statusSel = params.getAll("status") as Status[];
 
   return (
     <>
@@ -278,231 +205,15 @@ export default function Findings() {
         }
       />
 
-      <div className="card mb-4 space-y-3 p-3">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-muted" />
-            <input
-              className="input pl-8"
-              placeholder="Search title, CVE, package, file, rule…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-label="Search findings"
-            />
-          </div>
-          {!!products.data?.length && (
-            <select className="input w-auto" value={params.get("product_id") ?? ""} onChange={(e) => update({ product_id: e.target.value || null })} aria-label="Product">
-              <option value="">All products</option>
-              {products.data.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <select className="input w-auto" value={params.get("environment") ?? ""} onChange={(e) => update({ environment: e.target.value || null })} aria-label="Environment">
-            <option value="">Any environment</option>
-            {["production", "staging", "development", "test"].map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-          <select className="input w-auto" value={params.get("asset_id") ?? ""} onChange={(e) => update({ asset_id: e.target.value || null })} aria-label="Asset">
-            <option value="">All assets</option>
-            {assets.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select className="input w-auto" value={params.get("type") ?? ""} onChange={(e) => update({ type: e.target.value || null })} aria-label="Type">
-            <option value="">All types</option>
-            <option value="sast">SAST (code)</option>
-            <option value="sca">SCA (dependencies)</option>
-            <option value="iac">IaC (infrastructure)</option>
-            <option value="dast">DAST (running apps)</option>
-          </select>
-          <select
-            className="input w-auto"
-            value={params.get("unassigned") ? "none" : params.get("assignee_id") ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              update({ unassigned: v === "none" ? "true" : null, assignee_id: v && v !== "none" ? v : null });
-            }}
-            aria-label="Assignee"
-          >
-            <option value="">Any assignee</option>
-            <option value={String(user?.id)}>Assigned to me</option>
-            <option value="none">Unassigned</option>
-            {directory.data
-              ?.filter((u) => u.id !== user?.id)
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.email}
-                </option>
-              ))}
-          </select>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-xs text-muted">Severity</span>
-            {SEVERITIES.map((s) => (
-              <Chip key={s} active={sevSel.includes(s)} onClick={() => toggleList("severity", s)}>
-                <span className="h-2 w-2 rounded-full" style={{ background: sevColor(s) }} />
-                {SEVERITY_LABEL[s]}
-              </Chip>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-xs text-muted">Status</span>
-            {STATUSES.map((s) => (
-              <Chip key={s} active={statusSel.includes(s)} onClick={() => toggleList("status", s)}>
-                {STATUS_LABEL[s]}
-              </Chip>
-            ))}
-          </div>
-          <Chip active={params.get("overdue") === "true"} onClick={() => update({ overdue: params.get("overdue") ? null : "true" })}>
-            Past SLA
-          </Chip>
-          <Chip active={params.get("kev") === "true"} onClick={() => update({ kev: params.get("kev") ? null : "true" })}>
-            Known exploited
-          </Chip>
-          <Chip active={!!params.get("epss_min")} onClick={() => update({ epss_min: params.get("epss_min") ? null : "0.1" })}>
-            EPSS ≥ 10%
-          </Chip>
-          <span title="Still open here, but the linked ticket was closed in the tracker">
-            <Chip active={params.get("ticket_done") === "true"} onClick={() => update({ ticket_done: params.get("ticket_done") ? null : "true" })}>
-              Ticket closed
-            </Chip>
-          </span>
-          <label className="flex items-center gap-1 text-xs text-muted">
-            First seen
-            <input
-              type="date"
-              className="input w-auto px-2 py-0.5 text-xs"
-              aria-label="First seen from"
-              value={params.get("first_seen_from") ?? ""}
-              onChange={(e) => update({ first_seen_from: e.target.value || null })}
-            />
-            –
-            <input
-              type="date"
-              className="input w-auto px-2 py-0.5 text-xs"
-              aria-label="First seen to"
-              value={params.get("first_seen_to") ?? ""}
-              onChange={(e) => update({ first_seen_to: e.target.value || null })}
-            />
-          </label>
-          {params.getAll("tag").map((t) => (
-            <Chip key={`tag-${t}`} active onClick={() => toggleList("tag", t)}>
-              <Tag className="h-3 w-3" /> {t} <X className="h-3 w-3" />
-            </Chip>
-          ))}
-          {params.get("scan_id") && (
-            <Chip active onClick={() => update({ scan_id: null })}>
-              In scan #{params.get("scan_id")} <X className="h-3 w-3" />
-            </Chip>
-          )}
-          {params.get("not_in_scan_id") && (
-            <Chip active onClick={() => update({ not_in_scan_id: null })}>
-              Not in scan #{params.get("not_in_scan_id")} <X className="h-3 w-3" />
-            </Chip>
-          )}
-          {(["cwe", "cve", "package", "tool"] as const).map(
-            (k) =>
-              params.get(k) && (
-                <Chip key={k} active onClick={() => update({ [k]: null })}>
-                  {k}: {params.get(k)} <X className="h-3 w-3" />
-                </Chip>
-              ),
-          )}
-          {activeFilters && (
-            <button
-              className="text-xs text-accent hover:underline"
-              onClick={() => {
-                setQ("");
-                update(Object.fromEntries([...LIST_KEYS, ...SCALAR_KEYS].map((k) => [k, null])));
-              }}
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      </div>
+      <FilterControls params={params} update={update} q={q} setQ={setQ} toggleList={toggleList}
+        activeFilters={activeFilters} onClear={() => { setQ(""); update(Object.fromEntries([...LIST_KEYS, ...SCALAR_KEYS].map((key) => [key, null]))); }} />
 
       {targetsReady && selected.size > 0 && can("analyst") && (
-        <fieldset disabled={bulk.isPending} className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-accent/40 bg-raised px-3 py-2 shadow-sm">
-          <span className="text-sm font-medium">
-            {allMatching ? `All ${fmtNum(total)} matching selected` : `${selected.size} selected`}
-          </span>
-          {allSelected && !allMatching && total > items.length && (
-            <button className="text-xs text-accent hover:underline" onClick={() => setAllMatching(true)}>
-              Select all {fmtNum(total)} matching
-            </button>
-          )}
-          <button className="btn-secondary py-1" onClick={() => setStatusOpen(true)}>
-            Change status
-          </button>
-          <form className="flex items-center gap-1" onSubmit={addBulkTag}>
-            <Tag className="h-4 w-4 text-muted" />
-            <input
-              className="input w-36 py-1"
-              placeholder="Add tag…"
-              aria-label="Add tag to selected"
-              value={bulkTag}
-              maxLength={64}
-              onChange={(e) => setBulkTag(e.target.value)}
-            />
-            <button type="button" className="btn-ghost py-1 text-xs" disabled={!bulkTag.trim()} onClick={removeBulkTag}>
-              Remove
-            </button>
-          </form>
-          {can("manager") && (
-            <div className="flex items-center gap-1">
-              <CalendarClock className="h-4 w-4 text-muted" />
-              <input
-                className="input w-auto py-1"
-                type="date"
-                aria-label="Set due date for selected"
-                value=""
-                onChange={(e) => e.target.value && bulk.mutate({ due_at: endOfLocalDay(e.target.value) })}
-              />
-              <button className="btn-ghost py-1 text-xs" onClick={() => bulk.mutate({ clear_due_at: true })}>
-                Reset to SLA
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-1">
-            <UserPlus className="h-4 w-4 text-muted" />
-            <select
-              className="input w-auto py-1"
-              value=""
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v) bulk.mutate(v === "none" ? { unassign: true } : { assignee_id: Number(v) });
-              }}
-              aria-label="Assign selected"
-            >
-              <option value="">Assign to…</option>
-              <option value="none">Unassign</option>
-              {directory.data?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.email}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            className="btn-ghost ml-auto py-1"
-            onClick={() => {
-              setSelected(new Set());
-              setAllMatching(false);
-            }}
-          >
-            Clear selection
-          </button>
-        </fieldset>
+        <BulkActions selection={{ count: selected.size, allMatching, allSelected, total, pageCount: items.length }}
+          pending={bulk.isPending} canManage={can("manager")} tag={bulkTag} onTag={setBulkTag}
+          onAddTag={addBulkTag} onRemoveTag={removeBulkTag} onChangeStatus={() => setStatusOpen(true)}
+          onChange={(change) => bulk.mutate(change)} onSelectAll={() => setAllMatching(true)}
+          onClear={() => { setSelected(new Set()); setAllMatching(false); }} />
       )}
 
       <ErrorBox error={list.error || bulk.error || exporter.error} />
@@ -611,108 +322,3 @@ export default function Findings() {
     </>
   );
 }
-
-/**
- * One row, memoised. Typing in the search box re-renders the page and ticking a checkbox changes the
- * selection; before this, both re-rendered all fifty rows and every badge and formatter in them. The
- * callbacks it receives never change identity, and react-query keeps unchanged findings the same
- * objects between fetches, so a row renders again only when its own finding or checkbox changes.
- */
-const FindingRow = memo(function FindingRow({
-  f,
-  from,
-  selectable,
-  selectionDisabled,
-  checked,
-  onToggle,
-  onOpen,
-  onTag,
-  hidden,
-}: {
-  f: Finding;
-  from: string;
-  selectable: boolean;
-  selectionDisabled: boolean;
-  checked: boolean;
-  onToggle: (id: number) => void;
-  onOpen: (id: number) => void;
-  onTag: (tag: string) => void;
-  hidden: ReadonlySet<OptionalColumn>;
-}) {
-  const back = { from };
-  const shown = (key: OptionalColumn) => !hidden.has(key);
-  return (
-        <tr
-          className="cursor-pointer hover:bg-ink/[0.03]"
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest("input,a,button")) return;
-            onOpen(f.id);
-          }}
-        >
-          {selectable && (
-            <td className="td w-8">
-              <input
-                type="checkbox"
-                aria-label={`Select finding ${f.id}`}
-                disabled={selectionDisabled}
-                checked={checked}
-                onChange={() => onToggle(f.id)}
-              />
-            </td>
-          )}
-          <td className="td">
-            <SeverityBadge severity={f.severity} score={f.cvss_score} />
-          </td>
-          {shown("priority") && <td className="td text-right font-mono text-xs tabular-nums text-ink2">{(f.priority ?? 0).toFixed(1)}</td>}
-          <td className="td max-w-[480px]">
-            <Link to={`/findings/${f.id}`} state={back} className="line-clamp-1 font-medium hover:text-accent">
-              {f.title}
-            </Link>
-            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
-              <TypeBadge type={f.type} />
-              <span className="truncate font-mono">{findingLocation(f)}</span>
-              {f.cwe[0] && <span className="shrink-0">{f.cwe[0]}</span>}
-              {f.cve_id && <span className="shrink-0">{f.cve_id}</span>}
-              {f.tags?.map((t) => (
-                <button
-                  key={t}
-                  className="shrink-0 rounded bg-ink/5 px-1.5 py-px text-[11px] text-ink2 hover:bg-accent/10 hover:text-ink"
-                  title={`Filter by tag ${t}`}
-                  onClick={() => onTag(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </td>
-          {shown("asset") && <td className="td whitespace-nowrap text-ink2">{f.asset.name}</td>}
-          <td className="td">
-            <StatusBadge status={f.status} />
-            {f.overdue && <div className="mt-0.5 text-[11px] font-medium text-danger">Past SLA</div>}
-          </td>
-          {shown("exploit") && (
-            <td className="td whitespace-nowrap">
-              <ExploitBadge finding={f} />
-            </td>
-          )}
-          {shown("due") && (
-            <td
-              className={clsx("td whitespace-nowrap text-xs", f.overdue ? "font-medium text-danger" : "text-ink2")}
-              title={f.due_at_override ? "Due date set manually" : "From the remediation SLA"}
-            >
-              {f.sla_due_at ? fmtDate(f.sla_due_at) : "–"}
-              {f.due_at_override && <span className="ml-0.5">*</span>}
-            </td>
-          )}
-          {shown("tools") && <td className="td text-xs text-ink2">{f.tools.join(", ")}</td>}
-          {shown("first_seen") && (
-            <td className="td whitespace-nowrap text-xs text-ink2" title={fmtDate(f.first_seen_at)}>
-              {relTime(f.first_seen_at)}
-            </td>
-          )}
-          {shown("assignee") && (
-            <td className="td whitespace-nowrap text-xs text-ink2">{f.assignee ? f.assignee.full_name || f.assignee.email : "–"}</td>
-          )}
-        </tr>
-  );
-});

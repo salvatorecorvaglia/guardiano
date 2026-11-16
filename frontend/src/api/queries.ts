@@ -1,23 +1,6 @@
-import { type QueryClient, useQuery } from "@tanstack/react-query";
+import { type QueryClient, useQueries, useQuery } from "@tanstack/react-query";
 import { request } from "./typed";
 
-
-/** Every asset the user can see, by id and name, for pickers and filters. It used to read the first
- * 500 of /assets -- silently dropping the rest, and computing full risk summaries for a dropdown. */
-export function useAssetOptions() {
-  return useQuery({
-    queryKey: ["assets", "options"],
-    queryFn: ({ signal }) => request("get", "/api/v1/assets/options", { signal }),
-  });
-}
-
-export function useDirectory() {
-  return useQuery({
-    queryKey: ["users", "directory"],
-    queryFn: ({ signal }) => request("get", "/api/v1/users/directory", { signal }),
-    staleTime: 5 * 60_000,
-  });
-}
 
 export function useMeta() {
   return useQuery({ queryKey: ["meta"], queryFn: ({ signal }) => request("get", "/api/v1/meta", { signal }), staleTime: Infinity });
@@ -83,4 +66,17 @@ export async function getTopCwes(limit: number, assetId?: number, signal?: Abort
 export async function getTopPackages(limit: number, assetId?: number, signal?: AbortSignal) {
   const rows = await request("get", "/api/v1/analytics/top", { query: { by: "packages", limit, asset_id: assetId }, signal });
   return rows.map((row) => { if ("package" in row) return row; throw new Error("Unexpected package ranking response"); });
+}
+
+/** Resolve only selected users, in bounded batches, for labels outside search result pages. */
+export function useUserNames(ids: readonly number[]) {
+  const unique = [...new Set(ids)].sort((a, b) => a - b);
+  const chunks: number[][] = [];
+  for (let index = 0; index < unique.length; index += 500) chunks.push(unique.slice(index, index + 500));
+  const results = useQueries({ queries: chunks.map((chunk) => ({
+    queryKey: ["users", "lookup", chunk], staleTime: 5 * 60_000,
+    queryFn: ({ signal }: { signal: AbortSignal }) => request("get", "/api/v1/users/directory/lookup", { signal, query: { ids: chunk } }),
+  })) });
+  return { data: results.flatMap((result) => result.data ?? []), error: results.find((result) => result.isError)?.error,
+    retry: () => Promise.all(results.filter((result) => result.isError).map((result) => result.refetch())) };
 }

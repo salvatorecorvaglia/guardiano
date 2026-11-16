@@ -1,8 +1,9 @@
+import AsyncPicker from "./AsyncPicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { Pencil, Plus, Send, Trash2, Webhook as WebhookIcon } from "lucide-react";
 import { useState } from "react";
-import { useAssetOptions } from "../api/queries";
+
 import { type RequestBody, request } from "../api/typed";
 import type { Severity, Webhook, WebhookCreated } from "../api/types";
 import { fmtDateTime, relTime, SEVERITIES, SEVERITY_LABEL } from "../lib/format";
@@ -52,7 +53,7 @@ function SecretNotice({ secret }: { secret: string }) {
 function WebhookForm({ webhook, onClose }: { webhook?: Webhook; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const assets = useAssetOptions();
+
   const [draft, setDraft] = useState<Draft>(
     webhook
       ? {
@@ -168,14 +169,7 @@ function WebhookForm({ webhook, onClose }: { webhook?: Webhook; onClose: () => v
               </select>
             </Field>
             <Field label="Asset">
-              <select className="input" value={draft.asset_id} onChange={(e) => setDraft({ ...draft, asset_id: e.target.value })}>
-                <option value="">Every asset</option>
-                {assets.data?.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
+              <AsyncPicker kind="assets" label="Asset" value={draft.asset_id} emptyLabel="Every asset" onChange={(value) => setDraft({ ...draft, asset_id: value })} />
             </Field>
           </div>
           <ErrorBox error={save.error} />

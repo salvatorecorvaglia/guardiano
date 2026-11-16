@@ -1,6 +1,7 @@
+import AsyncPicker from "../components/AsyncPicker";
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
-import { analyticsKeys, getTopAssets, useAssetOptions } from "../api/queries";
+import { analyticsKeys, getTopAssets } from "../api/queries";
 import { request } from "../api/typed";
 import AsyncState from "../components/AsyncState";
 import TableScroll from "../components/TableScroll";
@@ -51,7 +52,7 @@ export default function Reports() {
   const assetId = params.get("asset") ?? "";
   const days = WINDOWS.includes(Number(params.get("days"))) ? Number(params.get("days")) : 90;
 
-  const assets = useAssetOptions(); // the same list every asset picker uses, from one cache entry
+
   const report = useQuery({
     queryKey: analyticsKeys.compliance(assetId, days),
     queryFn: ({ signal }) => request("get", "/api/v1/analytics/compliance", { signal, query: { days, asset_id: optionalNumber(assetId) } }),
@@ -74,7 +75,9 @@ export default function Reports() {
 
   const c = report.data;
   const s = summary.data;
-  const assetName = assets.data?.find((a) => String(a.id) === assetId)?.name;
+  const assetNameQuery = useQuery({ queryKey: ["assets", "picker-name", assetId], enabled: !!assetId,
+    queryFn: ({ signal }) => request("get", "/api/v1/assets/options/search", { signal, query: { selected_id: Number(assetId), page_size: 1 } }), });
+  const assetName = assetNameQuery.data?.selected?.name;
   const printReady = !!c && !!s && !report.isFetching && !summary.isFetching
     && !report.error && !summary.error
     && (!assetId || !!assetName)
@@ -90,14 +93,7 @@ export default function Reports() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select className="input w-52" aria-label="Report asset" value={assetId} onChange={(e) => update({ asset: e.target.value || null })}>
-            <option value="">All assets</option>
-            {assets.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AsyncPicker kind="assets" label="Report asset" value={assetId} emptyLabel="All assets" onChange={(value) => update({ asset: value || null })} />
           <select className="input w-32" aria-label="Report time window" value={days} onChange={(e) => update({ days: e.target.value === "90" ? null : e.target.value })}>
             {WINDOWS.map((d) => (
               <option key={d} value={d}>
@@ -111,7 +107,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <AsyncState queries={assetId ? [report, summary, assets] : [report, summary, top, breakdown]} label="Report">
+      <AsyncState queries={assetId ? [report, summary, assetNameQuery] : [report, summary, top, breakdown]} label="Report">
       {c && s && (
         <div className="space-y-4">
           <header className="border-b border-line pb-3">

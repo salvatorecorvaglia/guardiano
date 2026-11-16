@@ -24,7 +24,7 @@ from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.core.schema import check_schema, initialize_schema, migration_config  # noqa: E402
-from app.core.security import hash_password  # noqa: E402
+from app.core.security import hash_password, verify_password  # noqa: E402
 from app.core.testdb import validate_test_database  # noqa: E402
 from app.models import (  # noqa: E402
     Asset,
@@ -118,14 +118,22 @@ def main():
             command.upgrade(migration_config(connection), "0001")
             connection.execute(text("DROP TABLE alembic_version"))
         with Session(engines["legacy"]) as db:
-            user = User(
-                email="browser@example.test",
-                role="admin",
-                full_name="Rehearsal admin",
-                password_hash=hash_password("Browser-Smoke-Password-2026!"),
-            )
+            # Seed the frozen schema with SQL, not the newer User mapping (which has issuer columns).
+            for email, subject in (("browser@example.test", None), ("sso@example.test", "legacy-subject")):
+                db.execute(
+                    text(
+                        "INSERT INTO users (email, full_name, password_hash, role, is_active, token_version, "
+                        "oidc_subject, created_at, updated_at) VALUES "
+                        "(:email, 'Rehearsal admin', :password, 'admin', true, 0, :subject, now(), now())"
+                    ),
+                    {
+                        "email": email,
+                        "subject": subject,
+                        "password": hash_password("Browser-Smoke-Password-2026!"),
+                    },
+                )
             asset = Asset(name="restored-service")
-            db.add_all([user, asset])
+            db.add(asset)
             db.flush()
             scan = Scan(asset_id=asset.id, tool_name="rehearsal", scan_type="sca", format="cyclonedx")
             db.add(scan)
@@ -207,8 +215,108 @@ def main():
                 "alembic_version" not in inspect(connection).get_table_names(),
                 "Rollback schema was unexpectedly upgraded",
             )
+        from fastapi.testclient import TestClient
+
+        from app.core.config import settings
+        from app.core.db import get_db
+        from app.core.security import create_access_token
+        from app.main import app
+        from app.services import oidc
+
+        issuer = "https://original-idp.example.test"
+        settings.oidc_issuer, settings.oidc_client_id = issuer, "rehearsal"
+        settings.oidc_role_map = ""
+        settings.local_login = True
+        settings.mfa_enforced_roles = ""
+        with Session(engines["restored"]) as db:
+            legacy = db.scalar(select(User).where(User.email == "sso@example.test"))
+            verify(legacy.oidc_issuer is None and legacy.token_version == 1, "Legacy sessions not revoked")
+            old_token = create_access_token(legacy.id, "admin", 0, sso=True)
+            claims = {"iss": issuer, "sub": "legacy-subject", "email": legacy.email, "email_verified": True}
+            try:
+                oidc.sign_in(db, claims)
+            except oidc.SsoError:
+                pass
+            else:
+                raise RuntimeError("Unbound legacy identity was accepted")
+
+        def restored_db():
+            with Session(engines["restored"]) as session:
+                yield session
+
+        app.dependency_overrides[get_db] = restored_db
+        try:
+            with TestClient(app) as client:
+                verify(client.get("/readyz").status_code == 200, "Restored application not ready")
+                verify(
+                    client.get(
+                        "/api/v1/auth/me", headers={"Authorization": "Bearer " + old_token}
+                    ).status_code
+                    == 401,
+                    "Legacy session survived",
+                )
+                recovery = client.post(
+                    "/api/v1/auth/login",
+                    json={"email": "browser@example.test", "password": "Browser-Smoke-Password-2026!"},
+                )
+                verify(recovery.status_code == 200, "Local administrator recovery login failed")
+                verify(
+                    client.get(
+                        "/api/v1/findings",
+                        headers={"Authorization": "Bearer " + recovery.json()["access_token"]},
+                    ).status_code
+                    == 200,
+                    "Recovery administrator cannot read restored inventory",
+                )
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+        environment = {
+            **os.environ,
+            "DATABASE_URL": engines["restored"].url.render_as_string(hide_password=False),
+        }
+        bind = [sys.executable, "-m", "app.cli", "bind-oidc-identities", "--legacy-issuer", issuer]
+        first = subprocess.run(bind, env=environment, check=True, capture_output=True, text=True).stdout  # noqa: S603 -- fixed local CLI arguments
+        second = subprocess.run(bind, env=environment, check=True, capture_output=True, text=True).stdout  # noqa: S603 -- fixed local CLI arguments
+        verify("Bound 1" in first and "Bound 0" in second, "Issuer binding was not idempotent")
+        with Session(engines["restored"]) as db:
+            linked = oidc.sign_in(db, claims)
+            verify(
+                linked.email == "sso@example.test" and linked.token_version == 2, "SSO identity not restored"
+            )
+            db.rollback()
+            settings.oidc_issuer = "https://replacement-idp.example.test"
+            try:
+                oidc.sign_in(db, {**claims, "iss": settings.oidc_issuer})
+            except oidc.SsoError:
+                pass
+            else:
+                raise RuntimeError("Replacement issuer claimed the legacy administrator")
+        with engines["rollback"].connect() as connection:
+            original = connection.execute(
+                text(
+                    "SELECT password_hash, role, is_active, oidc_subject FROM users "
+                    "WHERE email = 'browser@example.test'"
+                )
+            ).one()
+            verify(
+                original.role == "admin"
+                and original.is_active
+                and verify_password("Browser-Smoke-Password-2026!", original.password_hash),
+                "Rollback recovery credentials invalid",
+            )
+            verify(
+                connection.scalar(text("SELECT oidc_subject FROM users WHERE email = 'sso@example.test'"))
+                == "legacy-subject",
+                "Rollback lost legacy SSO subject",
+            )
         result = {
             "status": "passed",
+            "legacy_sso_sessions_revoked": True,
+            "unbound_sso_refused": True,
+            "explicit_issuer_binding_idempotent": True,
+            "replacement_issuer_refused": True,
+            "restored_readiness_and_local_recovery_login": True,
+            "rollback_recovery_credentials_verified": True,
             "backup_bytes": dump.stat().st_size,
             "backup": str(dump),
             "counts_preserved": before,

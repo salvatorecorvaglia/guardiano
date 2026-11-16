@@ -13,7 +13,7 @@ from app.services import events, gate, inventory, lifecycle, tickets, triage
 from app.services.dedup import normalize_path
 from app.services.scan_context import ScanContext
 from app.services.scan_events import _EVENT_CAP, _emit_scan_events
-from app.services.scan_report import _new_finding, reconcile_tools, reported_severity
+from app.services.scan_report import _new_finding, reconcile_tools, reopen_reason, reported_severity
 from app.services.serializers import finding_payload
 
 log = logging.getLogger(__name__)
@@ -158,15 +158,7 @@ def apply_findings(db: Session, context: ScanContext) -> AppliedFindings:
             f.last_scan_id = scan.id
             f.occurrence_count = (f.occurrence_count or 0) + 1
 
-            reason = None
-            if f.status == Status.resolved.value:
-                reason = f"Detected again by {nf.tool_name} after being resolved"
-            elif (
-                f.status == Status.risk_accepted.value
-                and f.risk_accepted_until is not None
-                and f.risk_accepted_until <= now
-            ):
-                reason = "Risk acceptance expired and the issue is still present"
+            reason = reopen_reason(f, nf.tool_name, now)
             if reason:
                 reopened_from.append((f, f.status))
                 lifecycle.reopen(db, f, reason, scan_id=scan.id, now=now)

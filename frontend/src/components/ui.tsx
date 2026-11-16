@@ -224,14 +224,14 @@ export function ConfirmDialog({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => { if (!pending) onClose(); }}
       title={title}
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>
+          <button className="btn-secondary" disabled={pending} onClick={onClose}>
             Cancel
           </button>
-          <button className="btn-danger" onClick={onConfirm} disabled={pending}>
+          <button className="btn-danger" onClick={() => { if (!pending) onConfirm(); }} disabled={pending}>
             {pending ? "Working…" : confirmLabel}
           </button>
         </>

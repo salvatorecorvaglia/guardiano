@@ -170,6 +170,19 @@ def reported_severity(f: Finding, nf: NormalizedFinding, *, tools: list[str] | N
     return nf.severity if SEVERITY_RANK.get(nf.severity, 0) > SEVERITY_RANK.get(reported, 0) else reported
 
 
+def reopen_reason(finding: Finding, tool_name: str, now: datetime) -> str | None:
+    """One transition decision shared by preview and persistence."""
+    if finding.status == Status.resolved.value:
+        return f"Detected again by {tool_name} after being resolved"
+    if (
+        finding.status == Status.risk_accepted.value
+        and finding.risk_accepted_until is not None
+        and finding.risk_accepted_until <= now
+    ):
+        return "Risk acceptance expired and the issue is still present"
+    return None
+
+
 def _new_finding(asset: Asset, key: str, nf: NormalizedFinding, scan: Scan, now: datetime) -> Finding:
     return Finding(
         asset_id=asset.id,

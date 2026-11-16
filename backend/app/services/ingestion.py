@@ -15,6 +15,7 @@ from app.models import Asset, Finding, Scan, User
 from app.models.base import utcnow
 from app.parsers.base import NormalizedFinding
 from app.services import metrics
+from app.services.asset_names import NameConflict, lock_name, matches
 from app.services.errors import Busy, NotFound
 from app.services.scan_context import ScanContext
 from app.services.scan_persistence import persist_scan
@@ -45,7 +46,6 @@ from app.services.scope import Scope
 log = logging.getLogger(__name__)
 _CHUNK = 1000
 _LOCK_NAMESPACE = 0x6764
-_NAME_LOCK_NAMESPACE = 0x6765
 
 
 def lock_report_findings(
@@ -91,16 +91,15 @@ def get_or_create_asset(db: Session, name: str, scope: Scope) -> Asset:
     exactly as looking it up by id would be.
     """
     name = name.strip()
-    stmt = select(Asset).where(func.lower(Asset.name) == name.lower()).order_by(Asset.id).limit(1)
-    asset = db.scalar(stmt)
-    if asset is None:
-        # The unique index is on the exact name but lookup ignores case, so ON CONFLICT alone let two
-        # concurrent uploads as "Payments-API" and "payments-api" both insert, splitting one repo's
-        # findings across two assets for good. Creation is serialised on the lower-cased name, and
-        # the lookup repeated once the lock is held. (A unique index on lower(name) would say the
-        # same, but could not be added to an installation that already has such a pair.)
-        db.execute(select(func.pg_advisory_xact_lock(_NAME_LOCK_NAMESPACE, func.hashtext(name.lower()))))
-        asset = db.scalar(stmt)
+    if not name:
+        from app.services.errors import ValidationFailed
+
+        raise ValidationFailed("Asset name cannot be blank")
+    lock_name(db, name)
+    found = matches(db, name)
+    if len(found) > 1:
+        raise NameConflict("Asset name is ambiguous; use asset_id and resolve the legacy name collision")
+    asset = found[0] if found else None
     if asset is None:
         now = utcnow()
         db.execute(
@@ -116,7 +115,7 @@ def get_or_create_asset(db: Session, name: str, scope: Scope) -> Asset:
             )
             .on_conflict_do_nothing(index_elements=["name"])
         )
-        asset = db.scalar(stmt)
+        asset = matches(db, name)[0]
     # Checked last, so it also covers an asset another request created while this one waited.
     if not scope.owns(asset):
         raise NotFound("Asset not found")

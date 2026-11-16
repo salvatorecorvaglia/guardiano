@@ -3,10 +3,11 @@ import clsx from "clsx";
 import { CheckCircle2, FileJson, UploadCloud } from "lucide-react";
 import { type DragEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { invalidateInventory, useAssetOptions, useMeta } from "../api/queries";
+import { invalidateInventory, useMeta } from "../api/queries";
 import { request } from "../api/typed";
 import { fmtNum } from "../lib/format";
 import { ASSET_NAME_RE } from "./AssetForm";
+import AsyncPicker from "./AsyncPicker";
 import GateBadge from "./GateBadge";
 import { ErrorBox, Field, Modal } from "./ui";
 
@@ -37,7 +38,6 @@ export default function UploadDialog({
   defaultAssetId?: number;
 }) {
   const qc = useQueryClient();
-  const assets = useAssetOptions();
   const meta = useMeta();
   const [file, setFile] = useState<File | null>(null);
   const [assetMode, setAssetMode] = useState<"existing" | "new">("existing");
@@ -147,13 +147,13 @@ export default function UploadDialog({
             [
               [result.source === "preview" ? "Would be new" : "New", result.new_count],
               ["Already known", result.duplicate_count],
-              ["Reopened", result.reopened_count],
-              ["Auto-resolved", result.auto_resolved_count],
+              [result.source === "preview" ? "Would reopen" : "Reopened", result.reopened_count],
+              [result.source === "preview" ? "Would resolve" : "Auto-resolved", result.source === "preview" ? result.preview?.would_resolve : result.auto_resolved_count],
             ] as const
           ).map(([k, v]) => (
             <div key={k} className="rounded-lg border border-line p-3">
               <dt className="text-xs text-ink2">{k}</dt>
-              <dd className="tabular mt-0.5 text-lg font-semibold">{fmtNum(v)}</dd>
+              <dd className="tabular mt-0.5 text-lg font-semibold">{v == null ? "–" : fmtNum(v)}</dd>
             </div>
           ))}
         </dl>
@@ -228,14 +228,7 @@ export default function UploadDialog({
           </label>
         </div>
         {assetMode === "existing" ? (
-          <select className="input" value={assetId} onChange={(e) => setAssetId(e.target.value)} aria-label="Asset">
-            <option value="">Select an asset…</option>
-            {assets.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AsyncPicker kind="assets" label="Asset" value={assetId} onChange={setAssetId} emptyLabel="Select an asset…" />
         ) : (
           <input
             className="input"
@@ -284,15 +277,14 @@ export default function UploadDialog({
         <input
           type="checkbox"
           className="mt-0.5"
-          disabled={preview}
-          checked={closeMissing && !preview}
+          checked={closeMissing}
           onChange={(e) => setCloseMissing(e.target.checked)}
         />
         <span>
           Resolve findings no longer reported
           <span className="block text-xs text-muted">
-            Open findings from this tool on this asset that are missing from the report are marked Resolved. Use for full
-            scans only.
+            Open findings from this tool that are missing from a full report are marked Resolved. In a preview, this
+            only evaluates what would be resolved.
           </span>
         </span>
       </label>

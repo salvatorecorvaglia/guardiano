@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Users } from "lucide-react";
 import { useRef, useState } from "react";
-import { useDirectory } from "../api/queries";
+import UserMultiPicker from "./UserMultiPicker";
 import { request } from "../api/typed";
 import type { Team } from "../api/types";
 import { useToast } from "./Toaster";
@@ -11,7 +11,6 @@ import { ConfirmDialog, EmptyState, ErrorBox, Field, Modal, Spinner } from "./ui
 export default function Teams() {
   const qc = useQueryClient();
   const toast = useToast();
-  const directory = useDirectory();
   const teams = useQuery({ queryKey: ["teams"], queryFn: ({ signal }) => request("get", "/api/v1/teams", { signal }) });
   const [editing, setEditing] = useState<Team | "new" | null>(null);
   const [removing, setRemoving] = useState<Team | null>(null);
@@ -44,7 +43,7 @@ export default function Teams() {
           <Plus className="h-4 w-4" /> New team
         </button>
       </div>
-      <ErrorBox error={teams.error ?? remove.error} />
+      <ErrorBox error={teams.error} />
       {teams.isLoading ? (
         <Spinner />
       ) : teams.data?.length ? (
@@ -63,7 +62,7 @@ export default function Teams() {
                 <button className="btn-secondary" onClick={() => setEditing(team)}>
                   Members
                 </button>
-                <button className="btn-ghost p-1.5" aria-label={`Delete ${team.name}`} onClick={() => setRemoving(team)}>
+                <button className="btn-ghost p-1.5" aria-label={`Delete ${team.name}`} onClick={() => { remove.reset(); setRemoving(team); }}>
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -79,7 +78,6 @@ export default function Teams() {
       {editing && (
         <TeamDialog
           team={editing === "new" ? undefined : editing}
-          people={directory.data ?? []}
           onClose={() => setEditing(null)}
           onSaved={invalidate}
         />
@@ -89,6 +87,8 @@ export default function Teams() {
           open
           title={`Delete ${removing.name}?`}
           confirmLabel="Delete"
+          pending={remove.isPending}
+          error={remove.error}
           onConfirm={() => remove.mutate(removing)}
           onClose={() => setRemoving(null)}
         >
@@ -102,12 +102,10 @@ export default function Teams() {
 
 function TeamDialog({
   team,
-  people,
   onClose,
   onSaved,
 }: {
   team?: Team;
-  people: { id: number; email: string; full_name: string }[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -136,7 +134,7 @@ function TeamDialog({
     },
   });
 
-  const toggle = (id: number) => setMembers((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
+
 
   return (
     <Modal
@@ -161,16 +159,7 @@ function TeamDialog({
         <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
       <Field label="Members" hint="Administrators always see every asset, whether or not they are in a team.">
-        <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
-          {people.length === 0 && <p className="text-sm text-muted">No other accounts yet.</p>}
-          {people.map((person) => (
-            <label key={person.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={members.includes(person.id)} onChange={() => toggle(person.id)} />
-              <span className="truncate">{person.full_name || person.email}</span>
-              <span className="truncate text-xs text-muted">{person.email}</span>
-            </label>
-          ))}
-        </div>
+        <UserMultiPicker label="Members" value={members} onChange={setMembers} disabled={save.isPending} />
       </Field>
       <ErrorBox error={save.error} />
     </Modal>

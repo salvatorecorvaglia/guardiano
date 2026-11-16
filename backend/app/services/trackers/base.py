@@ -4,7 +4,6 @@ Every HTTP call goes through ``request`` so that timeouts, error handling and te
 with. Providers translate a finding into whatever their API wants and return a :class:`Ticket`.
 """
 
-import json
 import logging
 import re
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.crypto import decrypt
+from app.core.external import JSON_DOCUMENT, JsonObject
 from app.core.urlguard import BlockedURL, TooLarge, check_url, guarded_stream, read_capped
 from app.models import Finding, Integration
 from app.models.enums import TRACKER_KINDS
@@ -57,7 +57,7 @@ def token(integration: Integration) -> str:
     return decrypt(integration.secret_encrypted)
 
 
-def request(method: str, url: str, **kwargs: Any) -> dict[str, Any]:
+def request(method: str, url: str, **kwargs: Any) -> JsonObject:
     """One call to a tracker API. Raises TrackerError with a readable message on any failure."""
     try:
         check_url(url)
@@ -69,7 +69,11 @@ def request(method: str, url: str, **kwargs: Any) -> dict[str, Any]:
             raw = read_capped(response, _MAX_RESPONSE)
     except TooLarge:
         raise TrackerError(f"Tracker response was larger than {_MAX_RESPONSE // (1024 * 1024)} MB")
-    except (httpx.HTTPError, BlockedURL) as exc:
+    except BlockedURL as exc:
+        raise TrackerError("Tracker destination was blocked", definitely_not_created=True) from exc
+    except ValueError as exc:
+        raise TrackerError("Tracker returned an invalid encoded response") from exc
+    except httpx.HTTPError as exc:
         safe = isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, BlockedURL))
         raise TrackerError(
             f"Could not reach the tracker: {type(exc).__name__}",
@@ -99,10 +103,14 @@ def request(method: str, url: str, **kwargs: Any) -> dict[str, Any]:
     if not raw:
         return {}
     try:
-        body = json.loads(raw)
-    except ValueError:
-        raise TrackerError("Tracker returned a response that is not JSON")
-    return body if isinstance(body, dict) else {"items": body}
+        body = JSON_DOCUMENT.validate_json(raw)
+    except (ValueError, RecursionError):
+        raise TrackerError("Tracker returned a response that is not JSON") from None
+    if isinstance(body, dict):
+        return body
+    if isinstance(body, list):
+        return {"items": body}
+    raise TrackerError("Tracker returned JSON that is not an object or list")
 
 
 @dataclass(frozen=True)

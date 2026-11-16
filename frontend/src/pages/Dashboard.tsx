@@ -1,8 +1,9 @@
+import AsyncPicker from "../components/AsyncPicker";
 import { useQuery } from "@tanstack/react-query";
 import { AlarmClock, Flame, ShieldAlert, Siren, Timer, TriangleAlert, UploadCloud } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { analyticsKeys, getTopAssets, getTopCwes, getTopPackages, useAssetOptions } from "../api/queries";
+import { analyticsKeys, getTopAssets, getTopCwes, getTopPackages } from "../api/queries";
 import { request } from "../api/typed";
 import { useAuth } from "../auth/AuthContext";
 import FlowChart from "../components/charts/FlowChart";
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const [params, setParams] = useSearchParams();
   const days = Number(params.get("days")) || 90;
   const assetId = params.get("asset") ? Number(params.get("asset")) : undefined;
-  const assets = useAssetOptions();
+
   const { can } = useAuth();
   const [uploading, setUploading] = useState(false);
 
@@ -106,19 +107,7 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
-        <select
-          className="input w-auto py-1 text-xs"
-          value={assetId ?? ""}
-          onChange={(e) => setParam("asset", e.target.value || null)}
-          aria-label="Asset"
-        >
-          <option value="">All assets</option>
-          {assets.data?.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <AsyncPicker kind="assets" label="Asset" value={String(assetId ?? "")} emptyLabel="All assets" onChange={(value) => setParam("asset", value || null)} />
       </div>
 
       {trends.data?.severity_history_complete === false && <p role="status" className="text-sm text-warn">Some older severity changes lack structured history; those historical severity counts are approximate.</p>}

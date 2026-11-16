@@ -1,6 +1,7 @@
+import AsyncPicker from "./AsyncPicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { invalidateInventory, useDirectory, useProducts } from "../api/queries";
+import { invalidateInventory, useProducts } from "../api/queries";
 import { type RequestBody, request } from "../api/typed";
 import type { Asset } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -13,7 +14,7 @@ export const ASSET_NAME_RE = /^[\p{L}\p{N}_.\-/ @:]+$/u;
 export default function AssetForm({ asset, onClose, onSaved }: { asset?: Asset; onClose: () => void; onSaved?: (a: Asset) => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const directory = useDirectory();
+
   const { can } = useAuth();
   // Only an administrator may move an asset between teams, so only they are offered the choice.
   const teams = useQuery({ queryKey: ["teams"], queryFn: ({ signal }) => request("get", "/api/v1/teams", { signal }), enabled: can("admin") });
@@ -129,14 +130,7 @@ export default function AssetForm({ asset, onClose, onSaved }: { asset?: Asset; 
         </Field>
       </div>
       <Field label="Default assignee" hint="New findings on this asset are assigned to this person">
-        <select className="input" value={form.default_assignee_id} onChange={set("default_assignee_id")}>
-          <option value="">Nobody (leave unassigned)</option>
-          {directory.data?.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.full_name || u.email}
-            </option>
-          ))}
-        </select>
+        <AsyncPicker kind="users" label="Default assignee" value={form.default_assignee_id} emptyLabel="Nobody (leave unassigned)" onChange={(value) => setForm({ ...form, default_assignee_id: value })} />
       </Field>
       <Field
         label="Default branch"

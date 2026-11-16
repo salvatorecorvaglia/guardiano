@@ -58,8 +58,11 @@ def poll_tickets(db: Session, _: dict[str, Any]) -> None:
 
 @periodic("retention", timedelta(days=1))
 def retention_sweep(db: Session, _: dict[str, Any]) -> None:
-    """Apply the configured retention rules. Does nothing at all until one is switched on."""
-    retention.run(db)
+    """Apply history retention and drain expired reset tokens with bounded transactions."""
+    removed = retention.run(db)
+    while removed["password_resets"] == retention.RESET_BATCH_SIZE:
+        jobs.commit_owned(db)
+        removed["password_resets"] = retention.prune_password_resets(db)
 
 
 @periodic("prune_jobs", timedelta(days=1))

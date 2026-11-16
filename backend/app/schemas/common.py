@@ -10,3 +10,9 @@ class Page[T](BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class PickerPage[T](Page[T]):
+    """Bounded search results plus the currently selected item, even outside this page."""
+
+    selected: T | None = None

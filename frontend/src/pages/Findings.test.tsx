@@ -25,8 +25,8 @@ afterEach(() => {
 function serve(items = [finding({ id: 1, tags: ["pci"] }), finding({ id: 2 }), finding({ id: 3 })]) {
   return serveApi({
     "/findings": page(items),
-    "/assets/options": [],
-    "/users/directory": [],
+    "/assets/options/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
+    "/users/directory/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
     "/views": [],
     "/findings/tags": [],
     "/meta": { version: "t", sla_days: {}, local_login: true, oidc_enabled: false, email_enabled: false },
@@ -92,8 +92,8 @@ describe("Findings", () => {
     const items = [finding({ id: 1 }), finding({ id: 2 })];
     const calls = serveApi({
       "/findings": { ...page(items), total: 120 },
-      "/assets/options": [],
-      "/users/directory": [],
+      "/assets/options/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
+      "/users/directory/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
       "/views": [],
       "/findings/tags": [],
       "/meta": { version: "t", sla_days: {}, local_login: true, oidc_enabled: false, email_enabled: false },
@@ -117,8 +117,8 @@ describe("Findings", () => {
     const items = [finding({ id: 1 }), finding({ id: 2 })];
     const calls = serveApi({
       "/findings": { ...page(items), total: 120 },
-      "/assets/options": [],
-      "/users/directory": [],
+      "/assets/options/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
+      "/users/directory/search": { items: [], selected: null, total: 0, page: 1, page_size: 50 },
       "/views": [],
       "/findings/tags": [],
       "/meta": { version: "t", sla_days: {}, local_login: true, oidc_enabled: false, email_enabled: false },

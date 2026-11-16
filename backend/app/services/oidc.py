@@ -14,7 +14,6 @@ Local accounts keep working unless ``LOCAL_LOGIN=false``. A first sign-in create
 ``OIDC_AUTO_CREATE=false``), and group claims decide the role.
 """
 
-import json
 import logging
 import secrets
 import time
@@ -27,12 +26,24 @@ import httpx
 import jwt
 from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError
+from pydantic import ValidationError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.external import (
+    DISCOVERY_DOCUMENT,
+    IDENTITY_CLAIMS,
+    JSON_OBJECT,
+    JWK_SET,
+    TOKEN_RESPONSE,
+    DiscoveryDocument,
+    JsonObject,
+    JwkSet,
+    TokenResponse,
+)
 from app.core.security import hash_password
-from app.core.urlguard import BlockedURL, check_url, guarded_client, read_capped
+from app.core.urlguard import BlockedURL, TooLarge, check_url, guarded_client, read_capped
 from app.models import OidcState, User
 from app.models.base import utcnow
 from app.models.enums import Role
@@ -43,7 +54,7 @@ STATE_TTL = timedelta(minutes=10)
 # Discovery documents and key sets are a few kilobytes; a provider answering with more is misbehaving.
 _MAX_RESPONSE = 1024 * 1024
 _MAX_REDIRECTS = 5
-_discovery_cache: dict[str, Any] = {}
+_discovery_cache: dict[str, DiscoveryDocument] = {}
 _jwk_clients: dict[str, PyJWKClient] = {}
 
 
@@ -80,21 +91,33 @@ def _fetch(method: str, url: str, *, follow: bool = False, **kwargs: Any) -> tup
     raise BlockedURL(f"The identity provider redirected more than {_MAX_REDIRECTS} times")
 
 
-def discovery() -> dict[str, Any]:
+def discovery() -> DiscoveryDocument:
     """The provider's configuration, fetched once per process."""
     issuer = settings.oidc_issuer.rstrip("/")
     if issuer not in _discovery_cache:
         url = f"{issuer}/.well-known/openid-configuration"
         try:
             status, body = _fetch("GET", url, follow=True)
-            if status >= 400:
-                raise ValueError(f"HTTP {status}")
-            config = json.loads(body)
-        except (httpx.HTTPError, ValueError) as exc:
-            raise SsoError(f"Could not read the identity provider's configuration: {exc}")
-        if not isinstance(config, dict):
-            raise SsoError("The identity provider's configuration is not a JSON object")
-        _discovery_cache[issuer] = config
+        except (httpx.HTTPError, ValueError, RecursionError) as exc:
+            reason = str(exc) if isinstance(exc, (BlockedURL, TooLarge)) else type(exc).__name__
+            raise SsoError(f"Could not read the identity provider's configuration: {reason}") from None
+        if status >= 400:
+            raise SsoError(f"Could not read the identity provider's configuration: HTTP {status}")
+        try:
+            config = JSON_OBJECT.validate_json(body)
+        except ValidationError as exc:
+            if any(error["type"] == "dict_type" for error in exc.errors(include_input=False)):
+                raise SsoError("The identity provider's configuration is not a JSON object") from None
+            raise SsoError("The identity provider returned invalid discovery JSON") from None
+        except RecursionError:
+            raise SsoError("The identity provider returned invalid discovery JSON") from None
+        try:
+            document = DISCOVERY_DOCUMENT.validate_python(config)
+        except ValueError:
+            raise SsoError("The identity provider returned invalid discovery fields") from None
+        if document.get("issuer", issuer) != issuer:
+            raise SsoError("The identity provider discovery issuer does not match")
+        _discovery_cache[issuer] = document
     return _discovery_cache[issuer]
 
 
@@ -106,13 +129,15 @@ class _GuardedJwkClient(PyJWKClient):
     without it, tokens naming unknown key ids would each trigger a request to the provider.
     """
 
-    def fetch_data(self) -> Any:
+    def fetch_data(self) -> JwkSet:
         try:
             status, body = _fetch("GET", self.uri)
             if status >= 400:
                 raise ValueError(f"HTTP {status}")
-            jwk_set = json.loads(body)
-        except (httpx.HTTPError, ValueError) as exc:
+            jwk_set = JWK_SET.validate_json(body)
+        except ValidationError:
+            raise PyJWKClientConnectionError("The identity provider returned an invalid key set") from None
+        except (httpx.HTTPError, ValueError, RecursionError) as exc:
             raise PyJWKClientConnectionError(f"Could not fetch the identity provider's keys: {exc}") from exc
         if self.jwk_set_cache is not None:
             self.jwk_set_cache.put(jwk_set)
@@ -191,7 +216,7 @@ def take_state(db: Session, state: str) -> OidcState:
     return row
 
 
-def exchange_code(code: str, verifier: str) -> dict[str, Any]:
+def exchange_code(code: str, verifier: str) -> TokenResponse:
     config = discovery()
     endpoint = config.get("token_endpoint")
     if not endpoint:
@@ -216,12 +241,12 @@ def exchange_code(code: str, verifier: str) -> dict[str, Any]:
     if status >= 300:
         raise SsoError(f"The identity provider rejected the sign-in (HTTP {status})")
     try:
-        return json.loads(body)
-    except ValueError:
-        raise SsoError("The identity provider returned a token response that is not JSON")
+        return TOKEN_RESPONSE.validate_json(body)
+    except (ValueError, RecursionError):
+        raise SsoError("The identity provider returned an invalid token response") from None
 
 
-def verify_id_token(token: str, nonce: str) -> dict[str, Any]:
+def verify_id_token(token: str, nonce: str) -> JsonObject:
     """Check the signature and every claim that matters, then return the claims."""
     if not token:
         raise SsoError("The identity provider returned no id_token")
@@ -239,37 +264,54 @@ def verify_id_token(token: str, nonce: str) -> dict[str, Any]:
         raise SsoError(f"The identity provider's token could not be verified: {exc}")
     if claims.get("nonce") != nonce:
         raise SsoError("The identity provider's token does not match this sign-in attempt")
-    return claims
+    try:
+        return JSON_OBJECT.validate_python(claims)
+    except ValueError:
+        raise SsoError("The identity provider returned invalid claims") from None
 
 
-def role_for(claims: dict[str, Any], current: str | None) -> str:
+def role_for(claims: JsonObject, current: str | None) -> str:
     """The role a person's group claims map to.
 
     With a mapping configured, unmatched groups receive OIDC_DEFAULT_ROLE. Without a mapping,
     existing accounts keep their manually managed role.
     """
-    groups = claims.get(settings.oidc_groups_claim) or []
+    groups = claims.get(settings.oidc_groups_claim)
+    if groups is None:
+        groups = []
     if isinstance(groups, str):
         groups = [g.strip() for g in groups.replace(",", " ").split()]
-    names = {str(g).lower() for g in groups}
+    if not isinstance(groups, list) or any(not isinstance(g, str) for g in groups):
+        raise SsoError("The identity provider returned invalid group claims")
+    names = {g.lower() for g in groups}
     for group, role in settings.role_mapping:
         if group.lower() in names and role in {r.value for r in Role}:
             return role
     return settings.oidc_default_role if settings.role_mapping else (current or settings.oidc_default_role)
 
 
-def sign_in(db: Session, claims: dict[str, Any]) -> User:
+def sign_in(db: Session, claims: JsonObject) -> User:
     """Find or create the account this token belongs to."""
-    subject = str(claims.get("sub") or "")
-    email = str(claims.get("email") or "").strip().lower()
-    if not subject:
-        raise SsoError("The identity provider's token carries no subject")
+    try:
+        identity = IDENTITY_CLAIMS.validate_python(claims)
+    except ValueError:
+        raise SsoError("The identity provider returned invalid identity claims") from None
+    subject = identity["sub"]
+    email = (identity.get("email") or "").strip().lower()
 
     # An address is only believed when the provider says it verified it. Without that, anyone who can
     # set their own email at the provider could claim an existing account -- including an admin's.
-    verified = email and claims.get("email_verified") is True
+    verified = email and identity.get("email_verified") is True
 
-    user = db.scalar(select(User).where(User.oidc_subject == subject))
+    issuer = identity["iss"]
+    if not isinstance(issuer, str) or issuer != settings.oidc_issuer.rstrip("/"):
+        raise SsoError("The identity provider issuer does not match")
+    legacy = db.scalar(select(User.id).where(User.oidc_subject == subject, User.oidc_issuer.is_(None)))
+    if legacy is not None:
+        raise SsoError(
+            "Legacy single sign-on identities must be bound to their original issuer by an operator"
+        )
+    user = db.scalar(select(User).where(User.oidc_subject == subject, User.oidc_issuer == issuer))
     if user is None and email and settings.oidc_link_by_email:
         # First sign-in for somebody who already has a local account: adopt it, by verified address.
         existing = db.scalar(select(User).where(User.email == email))
@@ -279,7 +321,7 @@ def sign_in(db: Session, claims: dict[str, Any]) -> User:
                     "An account with this address already exists, but the identity provider did not "
                     "report the address as verified"
                 )
-            if existing.oidc_subject and existing.oidc_subject != subject:
+            if existing.oidc_subject and (existing.oidc_subject != subject or existing.oidc_issuer != issuer):
                 raise SsoError("This account is already linked to a different single sign-on identity")
             user = existing
     if user is not None and not user.is_active:
@@ -295,7 +337,7 @@ def sign_in(db: Session, claims: dict[str, Any]) -> User:
             raise SsoError("An account with this address already exists and is not linked to sign-on")
         user = User(
             email=email,
-            full_name=str(claims.get("name") or claims.get("preferred_username") or "")[:200],
+            full_name=(identity.get("name") or identity.get("preferred_username") or "")[:200],
             # Local sign-in is impossible for this account until somebody sets a password.
             password_hash=hash_password(secrets.token_urlsafe(32)),
             role=role_for(claims, None),
@@ -304,11 +346,12 @@ def sign_in(db: Session, claims: dict[str, Any]) -> User:
         log.info("created account for %s from single sign-on", email)
 
     user.oidc_subject = subject
+    user.oidc_issuer = issuer
     if verified:
         # Same reasoning as linking: an unverified address must not rewrite the one already on file,
         # which would otherwise let somebody point an existing account at an address they control.
         user.email = email
-    if name := str(claims.get("name") or "").strip():
+    if name := (identity.get("name") or "").strip():
         user.full_name = name[:200]
     role = role_for(claims, user.role)
     if user.id is not None and role != user.role:

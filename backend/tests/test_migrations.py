@@ -115,3 +115,18 @@ def test_http_readiness_rejects_wrong_revision_but_liveness_survives(client):
                 text("UPDATE alembic_version SET version_num = :revision"), {"revision": revision}
             )
     assert client.get("/readyz").status_code == 200
+
+
+def test_issuer_migration_preserves_legacy_identities_unbound(isolated_schema):
+    with isolated_schema.begin() as connection:
+        command.upgrade(migration_config(connection), "0002")
+        connection.execute(text(
+            "INSERT INTO users (email, full_name, password_hash, role, is_active, token_version, "
+            "oidc_subject, created_at, updated_at) VALUES "
+            "('legacy@test.io', '', 'unused', 'admin', true, 0, 'legacy-sub', now(), now())"
+        ))
+    initialize_schema(isolated_schema)
+    with Session(isolated_schema) as db:
+        user = db.scalar(select(User).where(User.email == "legacy@test.io"))
+        assert user.role == "admin" and user.oidc_subject == "legacy-sub" and user.oidc_issuer is None
+        assert user.token_version == 1
