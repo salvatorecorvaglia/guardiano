@@ -98,5 +98,5 @@ def run(db: Session, now: datetime | None = None) -> dict[str, int]:
         "password_resets": prune_password_resets(db, now),
     }
     if any(removed.values()):
-        log.info("retention removed %s", ", ".join(f"{n} {k}" for k, n in removed.items() if n))
+        log.info("retention removed %d records", int(sum(removed.values())))
     return removed

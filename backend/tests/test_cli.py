@@ -76,6 +76,40 @@ def test_prune_does_nothing_without_a_rule(monkeypatch, capsys):
     assert "No retention rule is configured" in capsys.readouterr().out
 
 
+@pytest.mark.no_database
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_prune_prints_only_known_numeric_counts(monkeypatch, capsys, dry_run):
+    from unittest.mock import MagicMock
+
+    from app.services import retention
+
+    session = MagicMock()
+    monkeypatch.setattr(cli, "SessionLocal", lambda: session)
+    monkeypatch.setattr(
+        retention,
+        "run",
+        lambda db: {
+            "scans": 1,
+            "webhook_deliveries": 2,
+            "audit_log": 3,
+            "revoked_tokens": 4,
+            "password_resets": 5,
+            "unexpected-secret": "sensitive-value",
+        },
+    )
+    run(monkeypatch, "prune", *(["--dry-run"] if dry_run else []))
+    output = capsys.readouterr().out
+    action = "would remove" if dry_run else "removed"
+    assert output.endswith(
+        f"{action}: 1 scans, 2 webhook deliveries, 3 audit log, 4 revoked tokens, 5 password resets\n"
+    )
+    assert "unexpected-secret" not in output
+    assert "sensitive-value" not in output
+    db = session.__enter__.return_value
+    (db.rollback if dry_run else db.commit).assert_called_once_with()
+    (db.commit if dry_run else db.rollback).assert_not_called()
+
+
 def test_a_dry_run_prune_changes_nothing(db, monkeypatch):
     from datetime import timedelta
 

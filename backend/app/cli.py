@@ -101,7 +101,14 @@ def cmd_prune(args: argparse.Namespace) -> None:
         else:
             db.commit()
     done = "would remove" if args.dry_run else "removed"
-    print(f"{done}: " + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in removed.items()))
+    # Only fixed labels and numeric counts belong in the CLI output.
+    print(
+        f"{done}: {int(removed['scans'])} scans, "
+        f"{int(removed['webhook_deliveries'])} webhook deliveries, "
+        f"{int(removed['audit_log'])} audit log, "
+        f"{int(removed['revoked_tokens'])} revoked tokens, "
+        f"{int(removed['password_resets'])} password resets"
+    )
 
 
 def cmd_check_asset_names(_: argparse.Namespace) -> None:
