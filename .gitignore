@@ -54,6 +54,15 @@ frontend/playwright-report/
 frontend/blob-report/
 frontend/playwright/.cache/
 
+# Local operational verification artifacts
+/image-audit/
+*.dump.enc
+*.dump.enc.json
+*.dump.enc.partial
+
+# Local deployment update journal
+.update-state/
+
 # AI Tools & Agents
 .openai/
 .chatgpt/
@@ -76,12 +85,3 @@ claude-settings.json
 .windsurf/
 .cline/
 CLAUDE.md
-
-# Local operational verification artifacts
-/image-audit/
-*.dump.enc
-*.dump.enc.json
-*.dump.enc.partial
-
-# Local deployment update journal
-.update-state/
