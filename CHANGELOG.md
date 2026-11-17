@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update SQLAlchemy to `2.1.9`, raise the python-multipart minimum to `0.0.34`, and refresh the Python lockfile.
+- Update TanStack Query to `5.107.2` and Lucide to `1.74.0`; refresh frontend dependency overrides and the lockfile.
+
 ## [1.3.0] - 2026-11-16
 
 ### Added
