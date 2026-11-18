@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release:
+        description: Skip checks that depend on external vulnerability data
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -57,6 +62,7 @@ jobs:
       - name: Check dependency and API contracts
         run: python check_contracts.py
       - name: Audit locked production dependencies
+        if: ${{ !inputs.release }}
         run: |
           uv tool run pip-audit==2.10.1 --disable-pip --no-deps -r requirements.lock
       - name: Lint
@@ -120,6 +126,7 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Audit production dependencies
+        if: ${{ !inputs.release }}
         run: pnpm audit --prod --audit-level high
       - name: Lint
         run: pnpm lint
@@ -175,9 +182,10 @@ jobs:
         run: docker compose build db backend frontend
 
       - name: Audit production container images
+        if: ${{ !inputs.release }}
         run: python3 scripts/image-audit.py --image guardiano/backend:latest --image guardiano/frontend:latest --image guardiano/db:latest --output-dir image-audit
       - name: Retain full container vulnerability reports
-        if: always()
+        if: always() && !inputs.release
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: container-vulnerability-reports

@@ -30,6 +30,8 @@ jobs:
     name: Release checks
     needs: validate
     uses: ./.github/workflows/ci.yml
+    with:
+      release: true
 
   images:
     name: Publish verified images by digest
