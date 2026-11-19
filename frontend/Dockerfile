@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 FROM node:26-alpine AS deps
 WORKDIR /app
-RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 
 # Vite dev server
