@@ -9,6 +9,7 @@ services:
       context: ./database
     image: ${POSTGRES_IMAGE:-${REGISTRY:-guardiano}/db:${TAG:-latest}}
     environment:
+      PGDATA: /var/lib/postgresql/data
       POSTGRES_DB: ${POSTGRES_DB:-guardiano}
       POSTGRES_USER: ${POSTGRES_USER:-guardiano}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guardiano}
