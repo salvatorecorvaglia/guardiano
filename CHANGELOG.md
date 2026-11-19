@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update SQLAlchemy to `2.1.9`, FastAPI to `0.163.2`, raise the python-multipart minimum to `0.0.34`, and refresh the Python lockfile.
+- Update SQLAlchemy to `2.1.9`, FastAPI to `0.164.0`, raise the python-multipart minimum to `0.0.34`, and refresh the Python lockfile.
 - Update TanStack Query to `5.108.0`, Lucide to `1.75.0`, Recharts to `3.11.0`, and Vitest with V8 coverage to `5.1.1`; refresh frontend dependency overrides and the lockfile.
+- Update React Router to `7.18.6` and refresh Python dependency lockfiles.
+- Update container bases to Python `3.15`, PostgreSQL `18`, and Node.js `26`; install the frontend package manager at the version declared in package.json.
+- Add weekly Dependabot checks for GitHub Actions, frontend and Python dependencies, and container bases; refresh CI actions.
+- Preserve tag-triggered CI runs and skip external vulnerability audits and image scans during release checks.
 
 ## [1.3.0] - 2026-11-16
 

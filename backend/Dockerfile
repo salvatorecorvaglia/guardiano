@@ -8,7 +8,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.lock requirements-dev.lock ./
 ARG INSTALL_DEV=false
 RUN if [ "$INSTALL_DEV" = "true" ]; then LOCK=requirements-dev.lock; else LOCK=requirements.lock; fi \
- && pip install --require-hashes -r "$LOCK"
+ && pip install --require-hashes -r "$LOCK" \
+ && python -m pip uninstall -y pip
 
 FROM python:3.15-alpine@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -22,6 +23,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # every peer would let anyone who reaches this container directly forge both. The bundled stack
 # widens it in docker-compose.yml, where nginx overwrites the header with the real peer address.
 RUN apk add --no-cache 'krb5-libs>=1.22.3-r0'
+# Installation tools and their vendored dependencies are unnecessary at runtime.
+# Remove both the global pip and ensurepip's bundled bootstrap wheel; the copied
+# application venv has already had its own pip removed in the builder.
+RUN /usr/local/bin/python -m pip uninstall -y pip \
+ && rm -rf /usr/local/lib/python3.15/ensurepip
 RUN addgroup -S -g 10001 guardiano \
  && adduser -S -D -H -u 10001 -G guardiano -h /app -s /sbin/nologin guardiano \
  && mkdir -p /app && chown guardiano:guardiano /app
