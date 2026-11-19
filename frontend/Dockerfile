@@ -18,7 +18,10 @@ RUN pnpm build
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS runtime
 # Install Alpine's security fixes, including nginx, on the reviewed base.
 USER root
-RUN apk add --no-cache \
+# The bundled dynamic modules require the base image's older nginx ABI.
+RUN apk del --no-network \
+      nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt \
+    && apk add --no-cache \
       'nginx>=1.30.7-r0' \
       'brotli-libs>=1.2.1-r0' \
       'curl>=8.23.0-r0' \
