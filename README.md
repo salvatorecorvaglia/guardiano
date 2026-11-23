@@ -154,46 +154,6 @@ For disconnected installations, disable feed synchronization and advisory lookup
 docker compose exec backend python -m app.cli --help
 ```
 
-## Production
-
-The production override requires Docker Compose 2.24.4 or later. It removes the published database port, binds the web service to loopback, and adds restart policies and bounded logs. Terminate HTTPS at a reverse proxy; an example is provided in [ops/Caddyfile](ops/Caddyfile).
-
-The operations helper requires Python 3 and Docker; encrypted backups also use OpenSSL.
-
-```bash
-python3 scripts/production.py --env-file .env.production init-env
-```
-
-This creates a protected configuration file with generated secrets, administrator MFA enforcement, and metrics enabled. Before deployment, edit it to set:
-
-- `PUBLIC_URL` to the public HTTPS URL and `GUARDIANO_ADMIN_EMAIL` to the administrator's address.
-- `REAL_IP_FROM` to the trusted proxy CIDR.
-- `POSTGRES_IMAGE`, `BACKEND_IMAGE`, and `FRONTEND_IMAGE` to tested image references pinned with `@sha256:…`.
-
-GitHub Releases provide the tested Linux AMD64 images in `production-images.tar.gz`.
-Download the archive and its checksum from the same release, then run:
-
-```bash
-sha256sum -c production-images.tar.gz.sha256
-docker load -i production-images.tar.gz
-```
-
-For a digest-pinned production deployment, tag and push the loaded images
-(`guardiano/backend:latest`, `guardiano/frontend:latest`, and `guardiano/db:latest`)
-to your deployment registry. Use the digests reported by `docker push` in
-`.env.production`.
-
-Then validate and deploy:
-
-```bash
-python3 scripts/production.py --env-file .env.production preflight
-python3 scripts/production.py --env-file .env.production deploy
-```
-
-The backend applies database migrations before serving traffic. Back up before upgrades. See [scripts/production.py](scripts/production.py) for deployment, encrypted backup, restore verification, and smoke-check commands; run it with `--help` for usage. [scripts/backup.sh](scripts/backup.sh) adds off-host backup upload through rclone. Example systemd units and monitoring configuration live under [ops](ops).
-
-Prometheus metrics are optional and served at `/metrics` on the backend. The bundled frontend proxy does not expose that endpoint.
-
 ## Development
 
 The stack uses React 19, TypeScript, and Vite for the frontend; FastAPI, SQLAlchemy, and Alembic for the backend; and PostgreSQL 16 for persistence. A separate worker handles queued jobs and periodic tasks.

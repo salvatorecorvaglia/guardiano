@@ -34,10 +34,10 @@ jobs:
       release: true
 
   release:
-    name: Publish GitHub release
+    name: Publish release images and assets
     needs: checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -72,6 +72,44 @@ jobs:
           Path(os.environ['RUNNER_TEMP'], 'release-notes.md').write_text(section.group(1).strip() + '\n')
           PYTHON
 
+      - name: Load verified production images
+        run: docker load --input production-images.tar.gz
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish versioned images and record digests
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          publish_image() {
+            local service="$1" env_key="$2"
+            local repository="docker.io/corvaglia91/guardiano-${service}"
+            local image="${repository}:${RELEASE_TAG}"
+            local push_log="$RUNNER_TEMP/guardiano-${service}-push.log"
+            local digest
+
+            docker tag "guardiano/${service}:latest" "$image"
+            docker push "$image" | tee "$push_log"
+            digest=$(awk -v tag="${RELEASE_TAG}:" '$1 == tag && $2 == "digest:" { print $3 }' "$push_log")
+            if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "Could not determine the published digest for $image" >&2
+              return 1
+            fi
+            printf '%s=%s@%s\n' "$env_key" "$repository" "$digest" >> production-images.env
+          }
+
+          : > production-images.env
+          publish_image db POSTGRES_IMAGE
+          publish_image backend BACKEND_IMAGE
+          publish_image frontend FRONTEND_IMAGE
+
       - name: Create release with changelog notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,8 +117,9 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          assets=(production-images.tar.gz production-images.tar.gz.sha256 production-images.env)
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" production-images.tar.gz production-images.tar.gz.sha256 --clobber
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
           else
-            gh release create "$RELEASE_TAG" production-images.tar.gz production-images.tar.gz.sha256 --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "Guardiano $RELEASE_TAG"
+            gh release create "$RELEASE_TAG" "${assets[@]}" --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "Guardiano $RELEASE_TAG"
           fi

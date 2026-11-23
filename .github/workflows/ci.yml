@@ -210,6 +210,7 @@ jobs:
           python3 scripts/production.py --env-file .env.production restore-drill "$RUNNER_TEMP/guardiano.dump.enc" --key-file "$RUNNER_TEMP/backup.key" --application-check
       - name: Save verified release images
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           docker save guardiano/backend:latest guardiano/frontend:latest guardiano/db:latest | gzip > "$RUNNER_TEMP/production-images.tar.gz"
       - name: Retain verified release images
