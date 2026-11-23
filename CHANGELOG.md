@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-23
+
 ### Changed
 
 - Update SQLAlchemy to `2.1.9`, FastAPI to `0.164.0`, raise the python-multipart minimum to `0.0.34`, and refresh the Python lockfile.

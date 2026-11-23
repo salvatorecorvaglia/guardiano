@@ -1,1 +1,1 @@
-__version__ = "1.3.0"  # single source: pyproject reads it via [tool.setuptools.dynamic]
+__version__ = "1.3.1"  # single source: pyproject reads it via [tool.setuptools.dynamic]
